@@ -188,6 +188,7 @@ describe('GameEngine', () => {
     expect(snapshot.lives).toBe(saveData.lives);
     expect(snapshot.selectedTower).toBe(saveData.selectedTower);
     expect(snapshot.continuousMode).toBe(true);
+    expect(snapshot.score).toBe(saveData.score);
     expect(snapshot.towers).toHaveLength(1);
     expect(snapshot.towers[0]).toMatchObject({
       typeId: 'archer',
@@ -243,9 +244,31 @@ describe('GameEngine', () => {
 
     expect(snapshot.wave).toBe(1);
     expect(snapshot.kills).toBeGreaterThan(0);
+    expect(snapshot.score).toBe(snapshot.kills * 10);
     expect(snapshot.isWaveActive).toBe(false);
     expect(snapshot.enemies).toHaveLength(0);
     expect(snapshot.towers.some((tower) => tower.totalDamage > 0)).toBe(true);
+  });
+
+  it('awards more score per kill on later waves without scaling linearly by wave number', () => {
+    const engine = new GameEngine();
+
+    expect(engine.placeTower(1, 2, 'archer').ok).toBe(true);
+    expect(engine.placeTower(6, 4, 'claw').ok).toBe(true);
+
+    const waveOne = runWave(engine, 600);
+    const waveOneScorePerKill = waveOne.score / waveOne.kills;
+    const waveOneKills = waveOne.kills;
+    const waveOneScore = waveOne.score;
+
+    const waveTwo = runWave(engine, 700);
+    const waveTwoKillDelta = waveTwo.kills - waveOneKills;
+    const waveTwoScoreDelta = waveTwo.score - waveOneScore;
+    const waveTwoScorePerKill = waveTwoScoreDelta / waveTwoKillDelta;
+
+    expect(waveTwoKillDelta).toBeGreaterThan(0);
+    expect(waveTwoScorePerKill).toBeGreaterThan(waveOneScorePerKill);
+    expect(waveTwoScorePerKill).toBeLessThan(waveOneScorePerKill * 2);
   });
 
   it('allows placing new towers during an active wave', () => {
@@ -394,6 +417,7 @@ describe('GameEngine', () => {
     expect(snapshot.gold).toBe(150);
     expect(snapshot.lives).toBe(12);
     expect(snapshot.kills).toBe(0);
+    expect(snapshot.score).toBe(0);
     expect(snapshot.wave).toBe(0);
     expect(snapshot.isWaveActive).toBe(false);
     expect(snapshot.isGameOver).toBe(false);

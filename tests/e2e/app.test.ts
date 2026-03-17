@@ -41,6 +41,7 @@ describe('GameApp', () => {
     const title = root.querySelector('h1');
     expect(title?.textContent).toMatch(/rodents out/i);
     expect(root.querySelector('.wave-banner strong')?.textContent).toBe('Setup');
+    expect(root.querySelector('.hud')?.textContent).toContain('Score0');
 
     const towerButtons = Array.from(root.querySelectorAll<HTMLElement>('[data-tower]'));
     expect(towerButtons).toHaveLength(6);
@@ -268,6 +269,7 @@ describe('GameApp', () => {
         gold: 92,
         lives: 11,
         kills: 17,
+        score: 214,
         wave: 2,
         selectedTower: 'magic',
         isGameOver: false,
@@ -291,12 +293,62 @@ describe('GameApp', () => {
 
     expect(root.textContent).toMatch(/Saved game restored at wave 2\./i);
     expect(root.textContent).toMatch(/Current map\s*Orchard Loop/i);
+    expect(root.querySelector('.hud')?.textContent).toContain('Score214');
     expect(root.querySelector('.hud')?.textContent).toContain('Gold92');
     expect(root.querySelector('.hud')?.textContent).toContain('Lives11');
     expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(true);
     pointerDown(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
     expect(root.textContent).toMatch(/Path: Volley/i);
     expect(root.textContent).not.toMatch(/Choose route/i);
+
+    app.unmount();
+  });
+
+  it('shows a game over summary with score and best tower stats', () => {
+    window.localStorage.setItem(
+      'kitty-defense-save-v1',
+      JSON.stringify({
+        version: 1,
+        mapId: 'meadow-run',
+        gold: 41,
+        lives: 0,
+        kills: 16,
+        score: 212,
+        wave: 7,
+        selectedTower: 'archer',
+        isGameOver: true,
+        towers: [
+          {
+            typeId: 'archer',
+            col: 0,
+            row: 0,
+            upgradeIds: ['archer-marksman'],
+            totalKills: 12,
+            totalDamage: 320,
+          },
+          {
+            typeId: 'claw',
+            col: 6,
+            row: 4,
+            upgradeIds: [],
+            totalKills: 4,
+            totalDamage: 90,
+          },
+        ],
+      }),
+    );
+
+    const root = document.createElement('div');
+    document.body.append(root);
+
+    const app = new GameApp(root);
+    app.mount();
+
+    expect(root.textContent).toMatch(/Game over/i);
+    expect(root.textContent).toMatch(/Score\s*212/i);
+    expect(root.textContent).toMatch(/Wave reached\s*7/i);
+    expect(root.textContent).toMatch(/Best tower\s*Archer Cat/i);
+    expect(root.textContent).toMatch(/75% of kills and 78% of damage/i);
 
     app.unmount();
   });

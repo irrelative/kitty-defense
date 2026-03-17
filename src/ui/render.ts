@@ -65,6 +65,46 @@ const renderChainLinks = (projectile: ProjectileVisual): string => {
   }).join('');
 };
 
+const getBestTowerSummary = (
+  towers: TowerSnapshot[],
+): { tower: TowerSnapshot; killShare: number; damageShare: number } | null => {
+  if (towers.length === 0) {
+    return null;
+  }
+
+  const totalKills = towers.reduce((sum, tower) => sum + tower.totalKills, 0);
+  const totalDamage = towers.reduce((sum, tower) => sum + tower.totalDamage, 0);
+  const scoredTowers = towers.map((tower) => {
+    const killShare = totalKills > 0 ? tower.totalKills / totalKills : 0;
+    const damageShare = totalDamage > 0 ? tower.totalDamage / totalDamage : 0;
+
+    return {
+      tower,
+      killShare,
+      damageShare,
+      impactScore: killShare + damageShare,
+    };
+  });
+
+  const bestTower = scoredTowers.sort((left, right) => {
+    if (right.impactScore !== left.impactScore) {
+      return right.impactScore - left.impactScore;
+    }
+
+    if (right.damageShare !== left.damageShare) {
+      return right.damageShare - left.damageShare;
+    }
+
+    return right.killShare - left.killShare;
+  })[0];
+
+  if (!bestTower || (bestTower.tower.totalKills === 0 && bestTower.tower.totalDamage === 0)) {
+    return null;
+  }
+
+  return bestTower;
+};
+
 const tileLabel = (tile: Tile): string => {
   if (tile.type === 'path') {
     return 'Path tile';
@@ -453,6 +493,7 @@ export class GameApp {
       typeof save.gold === 'number' &&
       typeof save.lives === 'number' &&
       typeof save.kills === 'number' &&
+      (typeof save.score === 'number' || typeof save.score === 'undefined') &&
       typeof save.wave === 'number' &&
       typeof save.selectedTower === 'string' &&
       typeof save.isGameOver === 'boolean' &&
@@ -514,6 +555,7 @@ export class GameApp {
     const nextWaveLabel = snapshot.wave + 1;
     const autoStartSeconds =
       snapshot.autoStartInMs === null ? null : Math.max(0.1, snapshot.autoStartInMs / 1000).toFixed(1);
+    const bestTower = getBestTowerSummary(snapshot.towers);
     const markup = `
       <main class="shell">
         <section class="hero">
@@ -560,6 +602,7 @@ export class GameApp {
                 <span>Next wave</span>
                 <strong>${snapshot.isGameOver ? '-' : nextWaveLabel}</strong>
               </div>
+              <div class="stat"><span>Score</span><strong>${snapshot.score}</strong></div>
               <div class="stat"><span>Gold</span><strong>${snapshot.gold}</strong></div>
               <div class="stat"><span>Interest</span><strong>+${snapshot.projectedInterest}g</strong></div>
               <div class="stat"><span>Lives</span><strong>${snapshot.lives}</strong></div>
@@ -568,10 +611,11 @@ export class GameApp {
             </div>
 
             <div class="board-frame">
-              <div
-                class="board"
-                style="width:${boardWidth}px;height:${boardHeight}px;"
-              >
+              <div class="board-stack">
+                <div
+                  class="board"
+                  style="width:${boardWidth}px;height:${boardHeight}px;"
+                >
                 ${
                   this.placementPreview
                     ? `
@@ -665,6 +709,58 @@ export class GameApp {
                     `;
                   })
                   .join('')}
+                </div>
+                ${
+                  snapshot.isGameOver
+                    ? `
+                      <section class="game-over-screen" aria-live="polite">
+                        <p class="game-over-screen__eyebrow">Run over</p>
+                        <h2>Game over</h2>
+                        <p class="game-over-screen__copy">
+                          The rodents broke through on wave ${snapshot.wave}.
+                        </p>
+                        <div class="game-over-stats">
+                          <div class="game-over-stat">
+                            <span>Score</span>
+                            <strong>${snapshot.score}</strong>
+                          </div>
+                          <div class="game-over-stat">
+                            <span>Wave reached</span>
+                            <strong>${snapshot.wave}</strong>
+                          </div>
+                          <div class="game-over-stat">
+                            <span>Total kills</span>
+                            <strong>${snapshot.kills}</strong>
+                          </div>
+                          <div class="game-over-stat">
+                            <span>Cats fielded</span>
+                            <strong>${snapshot.towers.length}</strong>
+                          </div>
+                        </div>
+                        ${
+                          bestTower
+                            ? `
+                              <div class="game-over-best">
+                                <span>Best tower</span>
+                                <strong>${TOWER_TYPES[bestTower.tower.typeId].name}</strong>
+                                <p>
+                                  ${Math.round(bestTower.killShare * 100)}% of kills and ${Math.round(bestTower.damageShare * 100)}% of damage
+                                </p>
+                              </div>
+                            `
+                            : `
+                              <div class="game-over-best">
+                                <span>Best tower</span>
+                                <strong>No standout cat</strong>
+                                <p>No tower dealt meaningful damage before the village fell.</p>
+                              </div>
+                            `
+                        }
+                        <button class="primary-button" data-action="reset-game">Play again</button>
+                      </section>
+                    `
+                    : ''
+                }
               </div>
             </div>
           </div>
