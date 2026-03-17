@@ -1,5 +1,5 @@
 export type TileType = 'grass' | 'path' | 'base';
-export type TowerTypeId = 'archer' | 'claw' | 'magic' | 'bombardier';
+export type TowerTypeId = 'archer' | 'claw' | 'magic' | 'bombardier' | 'frost' | 'storm';
 export type EnemyArchetype = 'mouse' | 'rat' | 'brute';
 export type MapId = 'meadow-run' | 'creek-bend' | 'orchard-loop';
 export type GameEventType =
@@ -49,6 +49,10 @@ export interface TowerUpgradeStep {
   damage: number;
   fireRateMs: number;
   splashRadius: number;
+  slowStrength?: number;
+  slowDurationMs?: number;
+  chainCount?: number;
+  chainRange?: number;
 }
 
 export interface TowerUpgradeNode extends TowerUpgradeStep {
@@ -69,7 +73,11 @@ export interface TowerConfig {
   accent: string;
   description: string;
   spriteName: string;
-  projectileVariant: 'orb' | 'bolt' | 'bomb' | 'slash';
+  projectileVariant: 'orb' | 'bolt' | 'bomb' | 'slash' | 'frost' | 'chain';
+  slowStrength?: number;
+  slowDurationMs?: number;
+  chainCount?: number;
+  chainRange?: number;
   upgradeTree: TowerUpgradeNode[];
 }
 
@@ -99,6 +107,7 @@ export interface ProjectileVisual {
   id: string;
   from: Point;
   to: Point;
+  jumps?: Point[];
   progress: number;
   color: string;
   variant:
@@ -109,6 +118,8 @@ export interface ProjectileVisual {
     | 'bolt-rune'
     | 'bomb'
     | 'bomb-shrapnel'
+    | 'frost'
+    | 'chain'
     | 'slash'
     | 'slash-guard';
 }
@@ -123,6 +134,10 @@ export interface TowerSnapshot {
   damage: number;
   fireRateMs: number;
   splashRadius: number;
+  slowStrength: number;
+  slowDurationMs: number;
+  chainCount: number;
+  chainRange: number;
   totalKills: number;
   totalDamage: number;
   upgradeCost: number | null;
@@ -160,6 +175,7 @@ export interface GameSnapshot {
   projectedInterest: number;
   lives: number;
   kills: number;
+  score: number;
   wave: number;
   continuousMode: boolean;
   autoStartInMs: number | null;
@@ -196,6 +212,7 @@ export interface GameSaveData {
   gold: number;
   lives: number;
   kills: number;
+  score?: number;
   wave: number;
   selectedTower: TowerTypeId;
   isGameOver: boolean;

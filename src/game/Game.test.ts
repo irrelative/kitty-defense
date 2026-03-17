@@ -48,6 +48,26 @@ describe('GameEngine', () => {
     });
   });
 
+  it('offers frost and storm cats with control-focused stats', () => {
+    const engine = new GameEngine();
+    const snapshot = engine.getSnapshot();
+    const frost = snapshot.towerConfigs.find((tower) => tower.id === 'frost');
+    const storm = snapshot.towerConfigs.find((tower) => tower.id === 'storm');
+
+    expect(frost).toMatchObject({
+      name: 'Frost Cat',
+      cost: 95,
+      slowStrength: 0.45,
+      slowDurationMs: 1100,
+    });
+    expect(storm).toMatchObject({
+      name: 'Storm Cat',
+      cost: 130,
+      chainCount: 2,
+      chainRange: 1.45,
+    });
+  });
+
   it('switches maps before the run starts', () => {
     const engine = new GameEngine();
 

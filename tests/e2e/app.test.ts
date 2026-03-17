@@ -43,7 +43,7 @@ describe('GameApp', () => {
     expect(root.querySelector('.wave-banner strong')?.textContent).toBe('Setup');
 
     const towerButtons = Array.from(root.querySelectorAll<HTMLElement>('[data-tower]'));
-    expect(towerButtons).toHaveLength(4);
+    expect(towerButtons).toHaveLength(6);
 
     towerButtons[2].click();
 
@@ -104,15 +104,21 @@ describe('GameApp', () => {
     app.unmount();
   });
 
-  it('renders the new bombardier cat in the deployment list', () => {
+  it('renders frost, storm, and bombardier cats in the deployment list', () => {
     const root = document.createElement('div');
     document.body.append(root);
 
     const app = new GameApp(root);
     app.mount();
 
+    const frostButton = root.querySelector<HTMLElement>('[data-tower="frost"]');
+    const stormButton = root.querySelector<HTMLElement>('[data-tower="storm"]');
     const bombardierButton = root.querySelector<HTMLElement>('[data-tower="bombardier"]');
 
+    expect(frostButton?.textContent).toMatch(/Frost Cat/i);
+    expect(frostButton?.textContent).toMatch(/95g/i);
+    expect(stormButton?.textContent).toMatch(/Storm Cat/i);
+    expect(stormButton?.textContent).toMatch(/130g/i);
     expect(bombardierButton?.textContent).toMatch(/Bombardier Cat/i);
     expect(bombardierButton?.textContent).toMatch(/120g/i);
 

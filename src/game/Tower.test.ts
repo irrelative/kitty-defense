@@ -66,6 +66,51 @@ describe('Tower', () => {
     expect(hexProjectile?.variant).toBe('bolt-rune');
   });
 
+  it('slows enemies with frost attacks and can freeze them on the control path', () => {
+    const path = createPathPoints(MAPS_BY_ID[DEFAULT_MAP_ID].path);
+
+    const frostTower = new Tower('frost', 1, 2);
+    const slowedEnemy = new Enemy('mouse', 1);
+    const controlEnemy = new Enemy('mouse', 1);
+
+    const frostProjectile = frostTower.attack(1500, [slowedEnemy], path);
+    slowedEnemy.advance(1000, path);
+    controlEnemy.advance(1000, path);
+
+    expect(frostProjectile?.variant).toBe('frost');
+    expect(slowedEnemy.getPosition(path).x).toBeLessThan(controlEnemy.getPosition(path).x);
+
+    const freezeTower = new Tower('frost', 1, 2);
+    expect(freezeTower.upgrade('frost-deepfreeze')).toBe(true);
+    expect(freezeTower.upgrade('frost-coldsnap')).toBe(true);
+    expect(freezeTower.upgrade('frost-absolutewinter')).toBe(true);
+    const frozenEnemy = new Enemy('mouse', 1);
+    const startPosition = frozenEnemy.getPosition(path);
+
+    freezeTower.attack(1500, [frozenEnemy], path);
+    frozenEnemy.advance(400, path);
+
+    expect(frozenEnemy.getPosition(path)).toEqual(startPosition);
+  });
+
+  it('chains storm attacks through nearby enemies', () => {
+    const path = createPathPoints(MAPS_BY_ID[DEFAULT_MAP_ID].path);
+    const tower = new Tower('storm', 1, 2);
+    const enemies = [
+      new Enemy('mouse', 1),
+      new Enemy('mouse', 1),
+      new Enemy('mouse', 1),
+      new Enemy('mouse', 1),
+    ];
+
+    const projectile = tower.attack(1500, enemies, path);
+
+    expect(projectile?.variant).toBe('chain');
+    expect(projectile?.jumps).toHaveLength(2);
+    expect(enemies.filter((enemy) => enemy.currentHp < enemy.maxHp)).toHaveLength(3);
+    expect(enemies.filter((enemy) => enemy.currentHp === enemy.maxHp)).toHaveLength(1);
+  });
+
   it('tracks total damage and kills dealt by a tower', () => {
     const path = createPathPoints(MAPS_BY_ID[DEFAULT_MAP_ID].path);
     const tower = new Tower('magic', 1, 2);

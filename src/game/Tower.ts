@@ -69,6 +69,10 @@ export class Tower {
       damage: stats.damage,
       fireRateMs: stats.fireRateMs,
       splashRadius: stats.splashRadius,
+      slowStrength: stats.slowStrength,
+      slowDurationMs: stats.slowDurationMs,
+      chainCount: stats.chainCount,
+      chainRange: stats.chainRange,
       totalKills: this.totalKills,
       totalDamage: this.totalDamage,
       upgradeCost: this.getNextUpgradeCost(),
@@ -98,7 +102,22 @@ export class Tower {
       return null;
     }
 
-    if (stats.splashRadius > 0) {
+    const jumpTargets =
+      stats.chainCount > 0
+        ? this.findChainTargets(target.enemy, target.position, enemies, enemyPathPoints, stats.chainCount, stats.chainRange)
+        : [];
+
+    if (stats.chainCount > 0) {
+      this.applyEffects(target.enemy, stats.damage, stats.slowStrength, stats.slowDurationMs);
+      for (const jumpTarget of jumpTargets) {
+        this.applyEffects(
+          jumpTarget.enemy,
+          stats.damage,
+          stats.slowStrength,
+          stats.slowDurationMs,
+        );
+      }
+    } else if (stats.splashRadius > 0) {
       const splashRadiusPx = stats.splashRadius * TILE_SIZE;
 
       for (const enemy of enemies.filter((enemy) => enemy.isAlive)) {
@@ -109,11 +128,11 @@ export class Tower {
         );
 
         if (distance <= splashRadiusPx) {
-          this.applyDamage(enemy, stats.damage);
+          this.applyEffects(enemy, stats.damage, stats.slowStrength, stats.slowDurationMs);
         }
       }
     } else {
-      this.applyDamage(target.enemy, stats.damage);
+      this.applyEffects(target.enemy, stats.damage, stats.slowStrength, stats.slowDurationMs);
     }
 
     this.cooldownMs = stats.fireRateMs;
@@ -122,6 +141,7 @@ export class Tower {
       id: `projectile-${projectileCounter += 1}`,
       from: origin,
       to: target.position,
+      jumps: jumpTargets.map((jumpTarget) => jumpTarget.position),
       progress: 0,
       color: config.accent,
       variant: this.getProjectileVariant(config),
@@ -186,7 +206,16 @@ export class Tower {
     this.totalDamage = totalDamage;
   }
 
-  getCurrentStats(): Pick<TowerConfig, 'range' | 'damage' | 'fireRateMs' | 'splashRadius'> {
+  getCurrentStats(): {
+    range: number;
+    damage: number;
+    fireRateMs: number;
+    splashRadius: number;
+    slowStrength: number;
+    slowDurationMs: number;
+    chainCount: number;
+    chainRange: number;
+  } {
     const config = TOWER_TYPES[this.typeId];
     const appliedSteps = this.getAppliedUpgrades();
 
@@ -196,12 +225,20 @@ export class Tower {
         damage: stats.damage + upgrade.damage,
         fireRateMs: Math.max(220, stats.fireRateMs + upgrade.fireRateMs),
         splashRadius: stats.splashRadius + upgrade.splashRadius,
+        slowStrength: stats.slowStrength + (upgrade.slowStrength ?? 0),
+        slowDurationMs: stats.slowDurationMs + (upgrade.slowDurationMs ?? 0),
+        chainCount: stats.chainCount + (upgrade.chainCount ?? 0),
+        chainRange: stats.chainRange + (upgrade.chainRange ?? 0),
       }),
       {
         range: config.range,
         damage: config.damage,
         fireRateMs: config.fireRateMs,
         splashRadius: config.splashRadius,
+        slowStrength: config.slowStrength ?? 0,
+        slowDurationMs: config.slowDurationMs ?? 0,
+        chainCount: config.chainCount ?? 0,
+        chainRange: config.chainRange ?? 0,
       },
     );
   }
@@ -235,6 +272,58 @@ export class Tower {
 
   private getProjectileVariant(config: TowerConfig): ProjectileVisual['variant'] {
     return getProjectileVariantForPath(this.upgradeIds[0], config.projectileVariant);
+  }
+
+  private findChainTargets(
+    initialEnemy: Enemy,
+    initialPosition: Point,
+    enemies: Enemy[],
+    enemyPathPoints: Point[],
+    chainCount: number,
+    chainRange: number,
+  ): Array<{ enemy: Enemy; position: Point }> {
+    const chainedTargets: Array<{ enemy: Enemy; position: Point }> = [];
+    const chainedIds = new Set([initialEnemy.id]);
+    let anchor = initialPosition;
+    const chainRangePx = chainRange * TILE_SIZE;
+
+    for (let index = 0; index < chainCount; index += 1) {
+      const nextTarget = enemies
+        .filter((enemy) => enemy.isAlive && !chainedIds.has(enemy.id))
+        .map((enemy) => ({ enemy, position: enemy.getPosition(enemyPathPoints) }))
+        .filter(
+          ({ position }) =>
+            Math.hypot(position.x - anchor.x, position.y - anchor.y) <= chainRangePx,
+        )
+        .sort(
+          (left, right) =>
+            Math.hypot(left.position.x - anchor.x, left.position.y - anchor.y) -
+            Math.hypot(right.position.x - anchor.x, right.position.y - anchor.y),
+        )[0];
+
+      if (!nextTarget) {
+        break;
+      }
+
+      chainedTargets.push(nextTarget);
+      chainedIds.add(nextTarget.enemy.id);
+      anchor = nextTarget.position;
+    }
+
+    return chainedTargets;
+  }
+
+  private applyEffects(
+    enemy: Enemy,
+    damage: number,
+    slowStrength: number,
+    slowDurationMs: number,
+  ): void {
+    if (slowStrength > 0 && slowDurationMs > 0) {
+      enemy.applySlow(slowStrength, slowDurationMs);
+    }
+
+    this.applyDamage(enemy, damage);
   }
 
   private applyDamage(enemy: Enemy, amount: number): void {

@@ -27,6 +27,10 @@ import type {
 } from '@/types/game';
 
 const PROJECTILE_DURATION_MS = 180;
+const SCORE_PER_KILL_BASE = 10;
+
+const getScorePerKill = (wave: number): number =>
+  Math.round(SCORE_PER_KILL_BASE * (1 + Math.log2(Math.max(1, wave)) * 0.45));
 
 export class GameEngine {
   private readonly waveManager = new WaveManager();
@@ -50,6 +54,8 @@ export class GameEngine {
   private lives = STARTING_LIVES;
 
   private kills = 0;
+
+  private score = 0;
 
   private wave = 0;
 
@@ -80,6 +86,7 @@ export class GameEngine {
     this.gold = STARTING_GOLD;
     this.lives = STARTING_LIVES;
     this.kills = 0;
+    this.score = 0;
     this.wave = 0;
     this.selectedTower = 'archer';
     this.selectedPlacedTowerId = null;
@@ -324,6 +331,7 @@ export class GameEngine {
     for (const enemy of defeated) {
       this.gold += enemy.reward;
       this.kills += 1;
+      this.score += getScorePerKill(this.wave);
       this.pendingEvents.push({
         type: 'enemy-defeated',
         message: 'Rodent defeated.',
@@ -384,6 +392,7 @@ export class GameEngine {
       projectedInterest: Math.floor(this.gold * INTEREST_RATE),
       lives: this.lives,
       kills: this.kills,
+      score: this.score,
       wave: this.wave,
       continuousMode: this.continuousMode,
       autoStartInMs: this.autoStartCountdownMs,
@@ -414,6 +423,7 @@ export class GameEngine {
       gold: this.gold,
       lives: this.lives,
       kills: this.kills,
+      score: this.score,
       wave: this.wave,
       selectedTower: this.selectedTower,
       isGameOver: this.isGameOver,
@@ -458,6 +468,7 @@ export class GameEngine {
     this.gold = save.gold;
     this.lives = save.lives;
     this.kills = save.kills;
+    this.score = save.score ?? save.kills * SCORE_PER_KILL_BASE;
     this.wave = save.wave;
     this.selectedTower = save.selectedTower;
     this.selectedPlacedTowerId = null;

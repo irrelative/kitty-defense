@@ -24,6 +24,10 @@ export class Enemy {
 
   private segmentProgress = 0;
 
+  private slowStrength = 0;
+
+  private slowMsRemaining = 0;
+
   constructor(typeId: EnemyArchetype, waveNumber: number) {
     const config = ENEMY_TYPES[typeId];
     const hpScale = 1 + (waveNumber - 1) * 0.15 + Math.max(0, waveNumber - 6) * 0.025;
@@ -52,8 +56,22 @@ export class Enemy {
     return this.hp === 0;
   }
 
+  applySlow(strength: number, durationMs: number): void {
+    if (strength <= 0 || durationMs <= 0 || !this.isAlive) {
+      return;
+    }
+
+    if (this.slowMsRemaining <= 0 || strength >= this.slowStrength) {
+      this.slowStrength = strength;
+    }
+
+    this.slowMsRemaining = Math.max(this.slowMsRemaining, durationMs);
+  }
+
   advance(deltaMs: number, path: Point[]): boolean {
-    let distanceRemaining = (this.speed * deltaMs) / 1000 * 72;
+    const speedMultiplier =
+      this.slowMsRemaining > 0 ? Math.max(0, 1 - Math.min(this.slowStrength, 1)) : 1;
+    let distanceRemaining = (this.speed * speedMultiplier * deltaMs) / 1000 * 72;
 
     while (distanceRemaining > 0 && this.segmentIndex < path.length - 1) {
       const start = path[this.segmentIndex];
@@ -69,6 +87,13 @@ export class Enemy {
       } else {
         this.segmentProgress += distanceRemaining / segmentLength;
         distanceRemaining = 0;
+      }
+    }
+
+    if (this.slowMsRemaining > 0) {
+      this.slowMsRemaining = Math.max(0, this.slowMsRemaining - deltaMs);
+      if (this.slowMsRemaining === 0) {
+        this.slowStrength = 0;
       }
     }
 

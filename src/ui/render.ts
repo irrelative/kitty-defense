@@ -5,7 +5,9 @@ import type {
   GameMapConfig,
   GameSaveData,
   GameSnapshot,
+  ProjectileVisual,
   Tile,
+  TowerSnapshot,
   TowerTypeId,
 } from '@/types/game';
 import { AudioManager } from './audio';
@@ -16,6 +18,52 @@ const assetUrl = (path: string): string => `${import.meta.env.BASE_URL}${path.re
 const spriteForTower = (typeId: TowerTypeId): string =>
   assetUrl(`art/${TOWER_TYPES[typeId].spriteName}.svg`);
 const spriteForEnemy = (typeId: string): string => assetUrl(`art/${ENEMY_TYPES[typeId].spriteName}.svg`);
+
+const formatSeconds = (ms: number): string => `${(ms / 1000).toFixed(ms >= 1000 ? 1 : 2)}s`;
+
+const renderTowerSpecialStats = (tower: TowerSnapshot): string => {
+  const stats: string[] = [];
+
+  if (tower.splashRadius > 0) {
+    stats.push(`<span>Splash ${tower.splashRadius.toFixed(2)}</span>`);
+  }
+
+  if (tower.slowStrength >= 1) {
+    stats.push(`<span>Freeze ${formatSeconds(tower.slowDurationMs)}</span>`);
+  } else if (tower.slowStrength > 0) {
+    stats.push(
+      `<span>Slow ${Math.round(tower.slowStrength * 100)}% / ${formatSeconds(tower.slowDurationMs)}</span>`,
+    );
+  }
+
+  if (tower.chainCount > 0) {
+    stats.push(`<span>Chain ${tower.chainCount + 1}</span>`);
+    stats.push(`<span>Arc ${tower.chainRange.toFixed(2)}</span>`);
+  }
+
+  return stats.join('');
+};
+
+const renderChainLinks = (projectile: ProjectileVisual): string => {
+  const points = [projectile.from, projectile.to, ...(projectile.jumps ?? [])];
+
+  return points.slice(0, -1).map((start, index) => {
+    const end = points[index + 1];
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+    const centerX = start.x + dx / 2;
+    const centerY = start.y + dy / 2;
+
+    return `
+      <div
+        class="projectile-chain-link"
+        style="left:${centerX}px;top:${centerY}px;width:${length}px;--chain-angle:${angle}rad;--projectile-color:${projectile.color};--projectile-progress:${projectile.progress};"
+      ></div>
+    `;
+  }).join('');
+};
 
 const tileLabel = (tile: Tile): string => {
   if (tile.type === 'path') {
@@ -477,8 +525,10 @@ export class GameApp {
             </p>
           </div>
           <div class="hero-card">
-            <span>Current map</span>
-            <strong>${snapshot.mapName}</strong>
+            <div>
+              <span>Current map</span>
+              <strong>${snapshot.mapName}</strong>
+            </div>
             <p>${snapshot.isWaveActive ? 'Rodents on the move.' : snapshot.wave === 0 ? 'Choose your route, then place towers.' : 'The path is quiet for now.'}</p>
           </div>
         </section>
@@ -587,6 +637,7 @@ export class GameApp {
                 ${snapshot.projectiles
                   .map((projectile) => {
                     const isSlash = ['slash', 'slash-guard'].includes(projectile.variant);
+                    const isChain = projectile.variant === 'chain';
                     const isBomb = ['bomb', 'bomb-shrapnel'].includes(projectile.variant);
                     const arcLift = isBomb
                       ? Math.sin(projectile.progress * Math.PI) *
@@ -594,14 +645,19 @@ export class GameApp {
                       : 0;
                     const x = isSlash
                       ? projectile.to.x
+                      : isChain
+                        ? projectile.to.x
                       : projectile.from.x + (projectile.to.x - projectile.from.x) * projectile.progress;
                     const y = isSlash
                       ? projectile.to.y
+                      : isChain
+                        ? projectile.to.y
                       : projectile.from.y +
                         (projectile.to.y - projectile.from.y) * projectile.progress -
                         arcLift;
                     const angle = Math.atan2(projectile.to.y - projectile.from.y, projectile.to.x - projectile.from.x);
                     return `
+                      ${isChain ? renderChainLinks(projectile) : ''}
                       <div
                         class="projectile projectile--${projectile.variant}"
                         style="left:${x}px;top:${y}px;--projectile-color:${projectile.color};--projectile-angle:${angle}rad;--projectile-progress:${projectile.progress};"
@@ -711,11 +767,7 @@ export class GameApp {
                         <span>Rate ${(selectedPlacedTower.fireRateMs / 1000).toFixed(2)}s</span>
                         <span>Kills ${selectedPlacedTower.totalKills}</span>
                         <span>Total damage ${selectedPlacedTower.totalDamage}</span>
-                        ${
-                          selectedPlacedTower.splashRadius > 0
-                            ? `<span>Splash ${selectedPlacedTower.splashRadius.toFixed(2)}</span>`
-                            : ''
-                        }
+                        ${renderTowerSpecialStats(selectedPlacedTower)}
                       </div>
                       ${
                         selectedPlacedTower.appliedUpgrades.length > 0
