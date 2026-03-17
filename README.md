@@ -1,99 +1,106 @@
-# Tower Defense with Kittens 🐱🐭
+# Kitty Defense
 
-A browser-based tower defense game where adorable kittens defend against waves of mischievous rodents!
+Browser tower defense with kittens as towers and rodents as enemies.
 
-## 🎮 How to Play
+## Current State
 
-1. **Build Towers**: Click on grass tiles to place kitten towers (cannot build on paths!)
-2. **Choose Your Tower**:
-   - 🐱 **Archer Cat** (50g) - Fast shooting, medium range
-   - 🐾 **Claw Cat** (75g) - Close range, high damage
-   - ✨ **Magic Cat** (100g) - Medium range, rapid fire
-3. **Survive Waves**: Rodents will spawn and follow the path - don't let them reach the end!
-4. **Earn Gold**: Kill rodents to earn gold for more towers
-5. **Win**: Survive as many waves as possible!
+- Playable single-map defense loop with three tower types
+- Wave spawning with scaling enemy health and mixed enemy tiers
+- Gold, lives, kills, wave progression, and placement validation
+- Custom SVG visual assets for towers, enemies, and UI accents
+- Generated WAV audio cues for placement, attacks, wave starts, leaks, and game over
+- Responsive layout verified in desktop and mobile browser emulation
 
-## 🛠️ Setup & Development
+## How To Play
 
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
+1. Select a kitten tower from the right-side panel.
+2. Click grass tiles to place towers.
+3. Avoid path tiles because rodents need a clear route.
+4. Start a wave and earn gold by defeating enemies.
+5. Keep rodents from reaching the village gate.
 
-### Installation
+## Scripts
 
 ```bash
 npm install
+npm run dev
+npm run build
+npm run preview
+npm test
+npm run test:run
+npm run test:unit
+npm run test:e2e
+npm run lint
+npm run format
+npm run generate:audio
+npm run ci
 ```
 
-### Running the Game
+## Make Targets
 
 ```bash
-npm run dev           # Start development server at http://localhost:3000
-npm run build         # Build for production
-npm run preview       # Preview production build
+make help
+make install
+make dev
+make build
+make preview
+make test-run
+make test-unit
+make test-e2e
+make lint
+make format
+make ci
+make audio
 ```
 
-### Testing
+## Project Structure
 
-```bash
-npm test              # Run tests in watch mode
-npm run test:run      # Run tests once
-npm run test:unit     # Run unit tests only
-```
-
-### Code Quality
-
-```bash
-npm run lint          # Type check and lint
-npm run format        # Format code with Prettier
-npm run ci            # Full CI pipeline (lint + test + build)
-```
-
-## 🏗️ Project Structure
-
-```
+```text
 src/
+├── assets/styles/main.css
 ├── game/
-│   ├── Game.ts          # Main game loop and state
-│   ├── Tower.ts         # Tower entity class
-│   ├── Enemy.ts         # Enemy entity class
-│   ├── WaveManager.ts   # Wave spawning logic
-│   ├── PathFinder.ts    # Pathfinding for enemies
-│   └── constants.ts     # Game constants and configs
-├── types/
-│   └── game.ts          # TypeScript interfaces and types
-├── assets/
-│   └── styles/
-│       └── main.css     # Game styles
-└── main.ts              # Entry point
+│   ├── Enemy.ts
+│   ├── Game.ts
+│   ├── Game.test.ts
+│   ├── Tower.ts
+│   ├── WaveManager.ts
+│   ├── WaveManager.test.ts
+│   ├── constants.ts
+│   └── map.ts
+├── types/game.ts
+├── ui/
+│   ├── audio.ts
+│   └── render.ts
+└── main.ts
+
+public/
+├── art/
+└── audio/
 ```
 
-## 📋 Features
+## Testing
 
-- [x] Multiple tower types with different stats
-- [x] Wave-based enemy spawning with increasing difficulty
-- [x] Gold and lives system
-- [x] Pathfinding for enemy movement
-- [x] Range and attack mechanics
-- [x] Responsive UI with HUD
-- [ ] Tower upgrades
-- [ ] Multiple game maps
-- [ ] Sound effects and music
-- [ ] Save/load game state
+The current test suite covers:
 
-## 🎯 Future Enhancements
+- Wave blueprint generation
+- Placement rules and resource spending
+- Combat resolution and wave completion
+- Loss conditions from leaked enemies
+- UI mount and tower-selection behavior
 
-1. **Tower Upgrades**: Allow upgrading towers for better stats
-2. **Special Abilities**: Add skills like slow, freeze, or nuke
-3. **Multiple Maps**: Different level designs with unique paths
-4. **Achievements**: Track player milestones
-5. **Leaderboards**: Compare scores with others
-6. **Mobile Support**: Touch controls for tablets/phones
+## Deployment
 
-## 📄 License
+GitHub Pages deployment is handled by [deploy-pages.yml](/Users/justin/code/kitty-defense/.github/workflows/deploy-pages.yml). Pushing to `main` builds the Vite app and publishes `dist/` to Pages.
 
-ISC
+For the repository to serve successfully:
 
-## 👨‍💻 Contributing
+1. Open the repository `Settings` → `Pages`.
+2. Set `Source` to `GitHub Actions`.
+3. After the workflow runs, the site will publish at `https://irrelative.github.io/kitty-defense/`.
 
-Feel free to submit issues and enhancement requests!
+## Next Improvements
+
+- Tower upgrades and sell mechanics
+- Multiple maps and route variants
+- More enemy traits and late-wave balancing
+- Persistent save data and score tracking

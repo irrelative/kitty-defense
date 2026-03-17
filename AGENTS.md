@@ -1,7 +1,7 @@
-# Agent Guidelines
+# Codex Agent Guidelines
 
 ## Project Overview
-Tower Defense with Kittens - Browser-based game using rodents as enemies and kittens as towers.
+Tower Defense with Kittens - browser-based game using rodents as enemies and kittens as towers.
 
 ## Build & Test Commands
 
@@ -38,10 +38,10 @@ npm run ci         # Run full CI pipeline (lint + test + build)
 
 ### Imports
 - Use ES modules (`import`/`export`)
-- Group imports: standard library → node modules → local modules
+- Group imports: standard library -> node modules -> local modules
 - Sort alphabetically within each group
 - Avoid default imports for named exports
-- Use absolute paths with `@/` alias for clarity
+- Use absolute paths with `@/` alias for clarity when the project already does so
 
 ### Formatting
 - 2-space indentation
@@ -53,120 +53,111 @@ npm run ci         # Run full CI pipeline (lint + test + build)
 
 ### Types (TypeScript)
 - Strict mode enabled
-- No `any` types unless unavoidable (document why)
-- Prefer `interface` for public APIs, `type` for unions/intersections
+- No `any` types unless unavoidable; document the reason when used
+- Prefer `interface` for public APIs and `type` for unions/intersections
 - Use utility types (`Pick`, `Omit`, `Partial`) where appropriate
 - Explicit return types on exported functions
-- Type guards for discriminated unions
+- Use type guards for discriminated unions
 
 ### Naming Conventions
 - `camelCase` for variables, functions, methods
-- `PascalCase` for classes, interfaces, types
+- `PascalCase` for classes, interfaces, and types
 - `UPPER_CASE` for constants
-- Boolean vars: `is*`, `has*`, `can*`, `should*`
-- Tests: describe intent, not implementation
+- Boolean variables should start with `is`, `has`, `can`, or `should`
+- Tests should describe intent, not implementation details
 
 ### Error Handling
-- Use try/catch for async operations
-- Prefer explicit error types over generic `Error`
-- Log errors with context (stack trace, inputs)
+- Use `try`/`catch` for async operations when errors need local handling
+- Prefer explicit error types over generic `Error` where practical
+- Log errors with useful context
 - Fail fast with clear messages
 - Never swallow errors silently
 
 ### Functions
-- Keep functions small (< 30 lines ideal)
-- Single responsibility principle
-- Avoid deep nesting (max 2 levels)
-- Use early returns for guards
+- Keep functions focused and reasonably small
+- Prefer single responsibility
+- Avoid deep nesting; use guard clauses and early returns
 - Prefer pure functions where possible
 
 ### Components
-- Atomic design pattern (atoms → molecules → organisms)
-- Reusable with props interfaces
-- Accessible by default (ARIA labels, keyboard nav)
-- Styled with CSS Modules or Tailwind
+- Match existing component patterns before introducing new abstractions
+- Keep components reusable with clear props interfaces
+- Build accessibility in by default, including keyboard and screen reader support
+- Preserve the current styling approach used by the codebase
 
 ### Testing
-- Test behavior, not implementation
-- Arrange-Act-Assert pattern
-- Mock external dependencies
-- Cover edge cases and error paths
-- Integration tests for critical paths
+- Test behavior, not implementation details
+- Use Arrange-Act-Assert structure
+- Mock external dependencies when needed
+- Cover edge cases and failure paths
+- Add or update tests when behavior changes
 
 ### Git
-- Commit messages: `type(scope): subject`
+- Commit messages should follow `type(scope): subject`
 - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-- PRs: small, focused changes
-- Squash merge for feature branches
+- Keep PRs small and focused
+- Prefer non-interactive git commands
 
-## Cursor Rules
+## Codex Workflow
 
-### Context Management
-- Reference file paths with `./` or `../`
-- Use `@` to reference functions/classes
-- Search before implementing unknown patterns
+### Context Gathering
+- Read relevant files before editing them
+- Search with `rg` or `rg --files` before falling back to slower tools
+- Match existing architecture and patterns before introducing new ones
+- Prefer local evidence over assumptions
 
-### File Operations
-- Read file before editing
-- Create new files in appropriate directories
-- Delete unused imports and files
+### Editing Rules
+- Make the smallest change that fully solves the task
+- Use `apply_patch` for manual file edits
+- Keep comments sparse and only where they clarify non-obvious logic
+- Remove dead code and unused imports when touched by the change
+- Default to ASCII unless the file already requires other characters
 
-### Code Generation
-- Match existing style and patterns
-- Include type signatures
-- Add minimal comments for complex logic
-- Write testable, modular code
+### Collaboration Rules
+- Assume the worktree may already contain user changes
+- Never revert or overwrite unrelated edits unless explicitly asked
+- If unexpected conflicting changes appear, stop and ask how to proceed
+- Communicate progress concisely while working
 
-## Copilot Rules
+### Verification
+- Run the narrowest useful checks first, then broader checks if needed
+- Prefer targeted tests for changed files before full-suite runs
+- If you cannot run verification, say so explicitly in the final summary
+- Final summaries should state what changed, how it was verified, and any remaining risk
 
-1. Suggest whole functions, not fragments
-2. Complete type signatures first
-3. Fill in test cases for new functions
-4. Generate JSDoc for public APIs
-
-## General Best Practices
+## Project Best Practices
 
 ### Performance
-- Lazy load heavy components
-- Memoize expensive calculations
-- Debounce/throttle user inputs
-- Virtualize long lists
+- Lazy load heavy components when the app structure supports it
+- Memoize expensive calculations when measurement or repeated renders justify it
+- Debounce or throttle noisy user inputs where appropriate
+- Virtualize large lists if rendering cost becomes material
 
 ### Security
-- Validate all user inputs
-- Sanitize HTML content
-- Use HTTPS for all APIs
-- Never commit secrets
+- Validate user-controlled input
+- Sanitize HTML content before rendering if applicable
+- Never commit secrets or credentials
 
 ### Documentation
-- README for project overview
-- JSDoc for public APIs
-- Inline comments for complex logic
-- Update docs with feature changes
+- Update docs when behavior or workflow changes
+- Add JSDoc only for public APIs or non-obvious contracts
+- Prefer concise inline comments over broad narration
 
 ### Accessibility
-- Semantic HTML elements
-- Keyboard navigation support
-- Screen reader friendly
-- Color contrast compliance
+- Use semantic HTML elements
+- Ensure keyboard navigation support
+- Keep screen reader output understandable
+- Maintain acceptable color contrast
 
-### Git Workflow
-```bash
-git checkout -b feature/ticket-123
-git add -A
-git commit -m "feat(game): add kitten tower upgrade"
-git push -u origin feature/ticket-123
-```
-
-### Review Checklist
+## Review Checklist
 - [ ] Code follows style guidelines
-- [ ] Tests added/updated
-- [ ] No console errors
+- [ ] Tests added or updated when behavior changed
+- [ ] No new lint or type issues introduced
 - [ ] Performance impact considered
-- [ ] Documentation updated
-- [ ] Accessibility verified
+- [ ] Documentation updated if needed
+- [ ] Accessibility verified for UI changes
 
-### Useful Commands
+## Useful Commands
 ```bash
 git log --oneline          # View commit history
 git diff                   # See changes
