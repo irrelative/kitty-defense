@@ -28,9 +28,11 @@ import type {
 
 const PROJECTILE_DURATION_MS = 180;
 const SCORE_PER_KILL_BASE = 10;
+const integerFormatter = new Intl.NumberFormat();
 
 const getScorePerKill = (wave: number): number =>
   Math.round(SCORE_PER_KILL_BASE * (1 + Math.log2(Math.max(1, wave)) * 0.45));
+const formatInteger = (value: number): string => integerFormatter.format(value);
 
 export class GameEngine {
   private readonly waveManager = new WaveManager();
@@ -229,7 +231,7 @@ export class GameEngine {
     this.selectedPlacedTowerId = null;
     this.pendingEvents.push({
       type: 'wave-started',
-      message: `Wave ${this.wave} has started.`,
+      message: `Wave ${formatInteger(this.wave)} has started.`,
     });
     return true;
   }
@@ -368,7 +370,7 @@ export class GameEngine {
       this.refreshContinuousStartCountdown();
       this.pendingEvents.push({
         type: 'wave-cleared',
-        message: `Wave ${this.wave} cleared. +${clearBonus}g bonus, +${interest}g interest.`,
+        message: `Wave ${formatInteger(this.wave)} cleared. +${formatInteger(clearBonus)}g bonus, +${formatInteger(interest)}g interest.`,
       });
     }
   }
@@ -485,7 +487,7 @@ export class GameEngine {
         type: 'game-reset',
         message: save.isGameOver
           ? 'Saved game restored at the final stand.'
-          : `Saved game restored at wave ${Math.max(1, save.wave)}.`,
+          : `Saved game restored at wave ${formatInteger(Math.max(1, save.wave))}.`,
       },
     ];
     return true;

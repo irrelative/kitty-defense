@@ -14,31 +14,48 @@ import { AudioManager } from './audio';
 
 const SAVE_KEY = 'kitty-defense-save-v1';
 const assetUrl = (path: string): string => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+const integerFormatter = new Intl.NumberFormat();
+const percentFormatter = new Intl.NumberFormat(undefined, {
+  style: 'percent',
+  maximumFractionDigits: 0,
+});
+
+const formatInteger = (value: number): string => integerFormatter.format(value);
+const formatDecimal = (
+  value: number,
+  minimumFractionDigits = 0,
+  maximumFractionDigits = minimumFractionDigits,
+): string =>
+  new Intl.NumberFormat(undefined, {
+    minimumFractionDigits,
+    maximumFractionDigits,
+  }).format(value);
 
 const spriteForTower = (typeId: TowerTypeId): string =>
   assetUrl(`art/${TOWER_TYPES[typeId].spriteName}.svg`);
 const spriteForEnemy = (typeId: string): string => assetUrl(`art/${ENEMY_TYPES[typeId].spriteName}.svg`);
 
-const formatSeconds = (ms: number): string => `${(ms / 1000).toFixed(ms >= 1000 ? 1 : 2)}s`;
+const formatSeconds = (ms: number): string =>
+  `${formatDecimal(ms / 1000, ms >= 1000 ? 1 : 2)}s`;
 
 const renderTowerSpecialStats = (tower: TowerSnapshot): string => {
   const stats: string[] = [];
 
   if (tower.splashRadius > 0) {
-    stats.push(`<span>Splash ${tower.splashRadius.toFixed(2)}</span>`);
+    stats.push(`<span>Splash ${formatDecimal(tower.splashRadius, 2)}</span>`);
   }
 
   if (tower.slowStrength >= 1) {
     stats.push(`<span>Freeze ${formatSeconds(tower.slowDurationMs)}</span>`);
   } else if (tower.slowStrength > 0) {
     stats.push(
-      `<span>Slow ${Math.round(tower.slowStrength * 100)}% / ${formatSeconds(tower.slowDurationMs)}</span>`,
+      `<span>Slow ${percentFormatter.format(tower.slowStrength)} / ${formatSeconds(tower.slowDurationMs)}</span>`,
     );
   }
 
   if (tower.chainCount > 0) {
-    stats.push(`<span>Chain ${tower.chainCount + 1}</span>`);
-    stats.push(`<span>Arc ${tower.chainRange.toFixed(2)}</span>`);
+    stats.push(`<span>Chain ${formatInteger(tower.chainCount + 1)}</span>`);
+    stats.push(`<span>Arc ${formatDecimal(tower.chainRange, 2)}</span>`);
   }
 
   return stats.join('');
@@ -114,7 +131,7 @@ const tileLabel = (tile: Tile): string => {
     return 'Village gate';
   }
 
-  return `Grass tile ${tile.col + 1}, ${tile.row + 1}`;
+  return `Grass tile ${formatInteger(tile.col + 1)}, ${formatInteger(tile.row + 1)}`;
 };
 
 const renderMapPreview = (map: GameMapConfig): string => {
@@ -551,10 +568,13 @@ export class GameApp {
     const selectedPlacedTowerConfig = selectedPlacedTower
       ? TOWER_TYPES[selectedPlacedTower.typeId]
       : null;
-    const currentWaveLabel = snapshot.wave === 0 ? 'Setup' : `${snapshot.wave}`;
-    const nextWaveLabel = snapshot.wave + 1;
+    const currentWaveLabel = snapshot.wave === 0 ? 'Setup' : formatInteger(snapshot.wave);
+    const nextWaveNumber = snapshot.wave + 1;
+    const nextWaveLabel = formatInteger(nextWaveNumber);
     const autoStartSeconds =
-      snapshot.autoStartInMs === null ? null : Math.max(0.1, snapshot.autoStartInMs / 1000).toFixed(1);
+      snapshot.autoStartInMs === null
+        ? null
+        : formatDecimal(Math.max(0.1, snapshot.autoStartInMs / 1000), 1);
     const bestTower = getBestTowerSummary(snapshot.towers);
     const markup = `
       <main class="shell">
@@ -587,7 +607,7 @@ export class GameApp {
                   snapshot.isGameOver
                     ? 'The village has fallen.'
                     : snapshot.isWaveActive
-                      ? `Wave ${snapshot.wave} is active.`
+                      ? `Wave ${formatInteger(snapshot.wave)} is active.`
                       : snapshot.wave === 0
                         ? 'Place kittens before the first wave.'
                         : snapshot.continuousMode && snapshot.autoStartInMs !== null
@@ -602,11 +622,11 @@ export class GameApp {
                 <span>Next wave</span>
                 <strong>${snapshot.isGameOver ? '-' : nextWaveLabel}</strong>
               </div>
-              <div class="stat"><span>Score</span><strong>${snapshot.score}</strong></div>
-              <div class="stat"><span>Gold</span><strong>${snapshot.gold}</strong></div>
-              <div class="stat"><span>Interest</span><strong>+${snapshot.projectedInterest}g</strong></div>
-              <div class="stat"><span>Lives</span><strong>${snapshot.lives}</strong></div>
-              <div class="stat"><span>Kills</span><strong>${snapshot.kills}</strong></div>
+              <div class="stat"><span>Score</span><strong>${formatInteger(snapshot.score)}</strong></div>
+              <div class="stat"><span>Gold</span><strong>${formatInteger(snapshot.gold)}</strong></div>
+              <div class="stat"><span>Interest</span><strong>+${formatInteger(snapshot.projectedInterest)}g</strong></div>
+              <div class="stat"><span>Lives</span><strong>${formatInteger(snapshot.lives)}</strong></div>
+              <div class="stat"><span>Kills</span><strong>${formatInteger(snapshot.kills)}</strong></div>
               <div class="stat"><span>Status</span><strong>${snapshot.isGameOver ? 'Lost' : snapshot.isWaveActive ? 'Battle' : 'Planning'}</strong></div>
             </div>
 
@@ -717,24 +737,24 @@ export class GameApp {
                         <p class="game-over-screen__eyebrow">Run over</p>
                         <h2>Game over</h2>
                         <p class="game-over-screen__copy">
-                          The rodents broke through on wave ${snapshot.wave}.
+                          The rodents broke through on wave ${formatInteger(snapshot.wave)}.
                         </p>
                         <div class="game-over-stats">
                           <div class="game-over-stat">
                             <span>Score</span>
-                            <strong>${snapshot.score}</strong>
+                            <strong>${formatInteger(snapshot.score)}</strong>
                           </div>
                           <div class="game-over-stat">
                             <span>Wave reached</span>
-                            <strong>${snapshot.wave}</strong>
+                            <strong>${formatInteger(snapshot.wave)}</strong>
                           </div>
                           <div class="game-over-stat">
                             <span>Total kills</span>
-                            <strong>${snapshot.kills}</strong>
+                            <strong>${formatInteger(snapshot.kills)}</strong>
                           </div>
                           <div class="game-over-stat">
                             <span>Cats fielded</span>
-                            <strong>${snapshot.towers.length}</strong>
+                            <strong>${formatInteger(snapshot.towers.length)}</strong>
                           </div>
                         </div>
                         ${
@@ -744,7 +764,7 @@ export class GameApp {
                                 <span>Best tower</span>
                                 <strong>${TOWER_TYPES[bestTower.tower.typeId].name}</strong>
                                 <p>
-                                  ${Math.round(bestTower.killShare * 100)}% of kills and ${Math.round(bestTower.damageShare * 100)}% of damage
+                                  ${percentFormatter.format(bestTower.killShare)} of kills and ${percentFormatter.format(bestTower.damageShare)} of damage
                                 </p>
                               </div>
                             `
@@ -763,6 +783,7 @@ export class GameApp {
                 }
               </div>
             </div>
+            <p class="board-hint">On smaller screens, swipe the field sideways to see the full route.</p>
           </div>
 
           <aside class="sidebar">
@@ -820,7 +841,7 @@ export class GameApp {
                         <img src="${spriteForTower(tower.id)}" alt="${tower.name}" />
                         <div>
                           <strong>${tower.name}</strong>
-                          <span>${tower.cost}g</span>
+                          <span>${formatInteger(tower.cost)}g</span>
                           <p>${tower.description}</p>
                         </div>
                       </button>
@@ -849,7 +870,7 @@ export class GameApp {
                         <img src="${spriteForTower(selectedPlacedTower.typeId)}" alt="${selectedPlacedTowerConfig.name}" />
                         <div>
                           <strong>${selectedPlacedTowerConfig.name}</strong>
-                          <span>Level ${selectedPlacedTower.level}</span>
+                          <span>Level ${formatInteger(selectedPlacedTower.level)}</span>
                           ${
                             selectedPlacedTower.appliedUpgrades[0]
                               ? `<p class="upgrade-branch">Path: ${selectedPlacedTower.appliedUpgrades[0].name}</p>`
@@ -858,11 +879,11 @@ export class GameApp {
                         </div>
                       </div>
                       <div class="upgrade-stats">
-                        <span>Range ${selectedPlacedTower.range.toFixed(2)}</span>
-                        <span>Damage ${selectedPlacedTower.damage}</span>
-                        <span>Rate ${(selectedPlacedTower.fireRateMs / 1000).toFixed(2)}s</span>
-                        <span>Kills ${selectedPlacedTower.totalKills}</span>
-                        <span>Total damage ${selectedPlacedTower.totalDamage}</span>
+                        <span>Range ${formatDecimal(selectedPlacedTower.range, 2)}</span>
+                        <span>Damage ${formatInteger(selectedPlacedTower.damage)}</span>
+                        <span>Rate ${formatDecimal(selectedPlacedTower.fireRateMs / 1000, 2)}s</span>
+                        <span>Kills ${formatInteger(selectedPlacedTower.totalKills)}</span>
+                        <span>Total damage ${formatInteger(selectedPlacedTower.totalDamage)}</span>
                         ${renderTowerSpecialStats(selectedPlacedTower)}
                       </div>
                       ${
@@ -899,7 +920,7 @@ export class GameApp {
                                       ${!snapshot.canUpgradeTowers ? 'disabled' : ''}
                                     >
                                       <strong>${upgrade.name}</strong>
-                                      <span>${upgrade.cost}g</span>
+                                      <span>${formatInteger(upgrade.cost)}g</span>
                                       <p>${upgrade.description}</p>
                                     </button>
                                   `,
@@ -933,7 +954,7 @@ export class GameApp {
             <section class="panel panel--action" style="--panel-print-image:url('${assetUrl('art/paw-print.svg')}');">
               <div class="panel-header">
                 <h2>Run control</h2>
-                <span class="selection-note">${Math.round(snapshot.interestRate * 100)}% interest</span>
+                <span class="selection-note">${percentFormatter.format(snapshot.interestRate)} interest</span>
               </div>
               <label class="toggle-row" for="continuous-mode-toggle">
                 <div>
@@ -959,7 +980,7 @@ export class GameApp {
                     snapshot.isGameOver
                       ? 'Village lost'
                       : snapshot.wave === 0
-                        ? 'Start wave 1'
+                        ? `Start wave ${formatInteger(1)}`
                         : snapshot.continuousMode && snapshot.autoStartInMs !== null
                           ? `Start wave ${nextWaveLabel} now`
                           : `Start wave ${nextWaveLabel}`
