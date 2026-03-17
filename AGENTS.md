@@ -118,6 +118,7 @@ npm run ci         # Run full CI pipeline (lint + test + build)
 - Never revert or overwrite unrelated edits unless explicitly asked
 - If unexpected conflicting changes appear, stop and ask how to proceed
 - Communicate progress concisely while working
+- When a task is complete and the user expects repository updates, stage the changed files and create a git commit with a conventional commit message
 
 ### Verification
 - Run the narrowest useful checks first, then broader checks if needed
