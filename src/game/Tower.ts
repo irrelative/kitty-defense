@@ -6,6 +6,7 @@ import type {
   ProjectileVisual,
   TowerConfig,
   TowerSnapshot,
+  TowerTargetMode,
   TowerTypeId,
   TowerUpgradeNode,
 } from '@/types/game';
@@ -50,8 +51,10 @@ export class Tower {
 
   private totalDamage = 0;
 
+  private targetMode: TowerTargetMode = 'first';
+
   constructor(typeId: TowerTypeId, col: number, row: number) {
-    this.id = `tower-${towerCounter += 1}`;
+    this.id = `tower-${(towerCounter += 1)}`;
     this.typeId = typeId;
     this.col = col;
     this.row = row;
@@ -79,7 +82,12 @@ export class Tower {
       canUpgrade: this.canUpgrade(),
       appliedUpgrades: this.getAppliedUpgrades(),
       availableUpgrades: this.getAvailableUpgrades(),
+      targetMode: this.targetMode,
     };
+  }
+
+  setTargetMode(targetMode: TowerTargetMode): void {
+    this.targetMode = targetMode;
   }
 
   attack(deltaMs: number, enemies: Enemy[], enemyPathPoints: Point[]): ProjectileVisual | null {
@@ -93,10 +101,26 @@ export class Tower {
 
     const origin = gridToPoint({ col: this.col, row: this.row });
     const rangePx = stats.range * TILE_SIZE;
-    const target = enemies
+    const candidates = enemies
       .filter((enemy) => enemy.isAlive)
       .map((enemy) => ({ enemy, position: enemy.getPosition(enemyPathPoints) }))
-      .find(({ position }) => Math.hypot(position.x - origin.x, position.y - origin.y) <= rangePx);
+      .filter(
+        ({ position }) => Math.hypot(position.x - origin.x, position.y - origin.y) <= rangePx,
+      );
+    const target = candidates.sort((left, right) => {
+      if (this.targetMode === 'strong') {
+        return right.enemy.maxHp - left.enemy.maxHp;
+      }
+
+      if (this.targetMode === 'close') {
+        return (
+          Math.hypot(left.position.x - origin.x, left.position.y - origin.y) -
+          Math.hypot(right.position.x - origin.x, right.position.y - origin.y)
+        );
+      }
+
+      return right.enemy.pathProgress - left.enemy.pathProgress;
+    })[0];
 
     if (!target) {
       return null;
@@ -104,18 +128,20 @@ export class Tower {
 
     const jumpTargets =
       stats.chainCount > 0
-        ? this.findChainTargets(target.enemy, target.position, enemies, enemyPathPoints, stats.chainCount, stats.chainRange)
+        ? this.findChainTargets(
+            target.enemy,
+            target.position,
+            enemies,
+            enemyPathPoints,
+            stats.chainCount,
+            stats.chainRange,
+          )
         : [];
 
     if (stats.chainCount > 0) {
       this.applyEffects(target.enemy, stats.damage, stats.slowStrength, stats.slowDurationMs);
       for (const jumpTarget of jumpTargets) {
-        this.applyEffects(
-          jumpTarget.enemy,
-          stats.damage,
-          stats.slowStrength,
-          stats.slowDurationMs,
-        );
+        this.applyEffects(jumpTarget.enemy, stats.damage, stats.slowStrength, stats.slowDurationMs);
       }
     } else if (stats.splashRadius > 0) {
       const splashRadiusPx = stats.splashRadius * TILE_SIZE;
@@ -138,7 +164,7 @@ export class Tower {
     this.cooldownMs = stats.fireRateMs;
 
     return {
-      id: `projectile-${projectileCounter += 1}`,
+      id: `projectile-${(projectileCounter += 1)}`,
       from: origin,
       to: target.position,
       jumps: jumpTargets.map((jumpTarget) => jumpTarget.position),
@@ -187,7 +213,9 @@ export class Tower {
     let currentParentId: string | null = null;
 
     for (let index = 0; index < level - 1; index += 1) {
-      const nextUpgrade = this.getUpgradeTree().find((upgrade) => upgrade.parentId === currentParentId);
+      const nextUpgrade = this.getUpgradeTree().find(
+        (upgrade) => upgrade.parentId === currentParentId,
+      );
       if (!nextUpgrade) {
         break;
       }

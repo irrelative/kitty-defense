@@ -8,11 +8,14 @@ import type {
   ProjectileVisual,
   Tile,
   TowerSnapshot,
+  TowerTargetMode,
   TowerTypeId,
 } from '@/types/game';
 import { AudioManager } from './audio';
 
 const SAVE_KEY = 'kitty-defense-save-v1';
+const TAP_MOVE_THRESHOLD_PX = 12;
+type GameSpeed = 0 | 1 | 2;
 const assetUrl = (path: string): string => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
 const integerFormatter = new Intl.NumberFormat();
 const percentFormatter = new Intl.NumberFormat(undefined, {
@@ -33,10 +36,10 @@ const formatDecimal = (
 
 const spriteForTower = (typeId: TowerTypeId): string =>
   assetUrl(`art/${TOWER_TYPES[typeId].spriteName}.svg`);
-const spriteForEnemy = (typeId: string): string => assetUrl(`art/${ENEMY_TYPES[typeId].spriteName}.svg`);
+const spriteForEnemy = (typeId: string): string =>
+  assetUrl(`art/${ENEMY_TYPES[typeId].spriteName}.svg`);
 
-const formatSeconds = (ms: number): string =>
-  `${formatDecimal(ms / 1000, ms >= 1000 ? 1 : 2)}s`;
+const formatSeconds = (ms: number): string => `${formatDecimal(ms / 1000, ms >= 1000 ? 1 : 2)}s`;
 
 const renderTowerSpecialStats = (tower: TowerSnapshot): string => {
   const stats: string[] = [];
@@ -64,22 +67,25 @@ const renderTowerSpecialStats = (tower: TowerSnapshot): string => {
 const renderChainLinks = (projectile: ProjectileVisual): string => {
   const points = [projectile.from, projectile.to, ...(projectile.jumps ?? [])];
 
-  return points.slice(0, -1).map((start, index) => {
-    const end = points[index + 1];
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.hypot(dx, dy);
-    const angle = Math.atan2(dy, dx);
-    const centerX = start.x + dx / 2;
-    const centerY = start.y + dy / 2;
+  return points
+    .slice(0, -1)
+    .map((start, index) => {
+      const end = points[index + 1];
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx);
+      const centerX = start.x + dx / 2;
+      const centerY = start.y + dy / 2;
 
-    return `
+      return `
       <div
         class="projectile-chain-link"
         style="left:${centerX}px;top:${centerY}px;width:${length}px;--chain-angle:${angle}rad;--projectile-color:${projectile.color};--projectile-progress:${projectile.progress};"
       ></div>
     `;
-  }).join('');
+    })
+    .join('');
 };
 
 const getBestTowerSummary = (
@@ -175,9 +181,18 @@ export class GameApp {
 
   private placementPreview: { col: number; row: number } | null = null;
 
+  private pendingBoardTap: {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    tileButton: HTMLElement;
+  } | null = null;
+
   private lastSavedState = '';
 
   private statusMessage = 'Select a kitten and defend the lane.';
+
+  private gameSpeed: GameSpeed = 1;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -188,23 +203,29 @@ export class GameApp {
     this.restoreSavedGame();
     this.syncView();
     this.root.addEventListener('pointerdown', this.handlePointerDown);
+    this.root.addEventListener('pointermove', this.handlePointerMove);
     this.root.addEventListener('click', this.handleClick);
     this.root.addEventListener('change', this.handleChange);
     this.root.addEventListener('mouseover', this.handlePreviewHover);
     this.root.addEventListener('mouseout', this.handlePreviewLeave);
     this.root.addEventListener('focusin', this.handlePreviewFocus);
     this.root.addEventListener('focusout', this.handlePreviewBlur);
+    window.addEventListener('pointerup', this.handlePointerUp);
+    window.addEventListener('pointercancel', this.handlePointerCancel);
     this.rafId = window.requestAnimationFrame(this.loop);
   }
 
   unmount(): void {
     this.root.removeEventListener('pointerdown', this.handlePointerDown);
+    this.root.removeEventListener('pointermove', this.handlePointerMove);
     this.root.removeEventListener('click', this.handleClick);
     this.root.removeEventListener('change', this.handleChange);
     this.root.removeEventListener('mouseover', this.handlePreviewHover);
     this.root.removeEventListener('mouseout', this.handlePreviewLeave);
     this.root.removeEventListener('focusin', this.handlePreviewFocus);
     this.root.removeEventListener('focusout', this.handlePreviewBlur);
+    window.removeEventListener('pointerup', this.handlePointerUp);
+    window.removeEventListener('pointercancel', this.handlePointerCancel);
     window.cancelAnimationFrame(this.rafId);
   }
 
@@ -212,7 +233,7 @@ export class GameApp {
     const deltaMs = this.lastFrameTime === 0 ? 16 : Math.min(64, timestamp - this.lastFrameTime);
     this.lastFrameTime = timestamp;
 
-    this.engine.tick(deltaMs);
+    this.engine.tick(deltaMs * this.gameSpeed);
     this.syncView();
     this.rafId = window.requestAnimationFrame(this.loop);
   };
@@ -223,11 +244,64 @@ export class GameApp {
       return;
     }
 
+    const tileButton = target.closest<HTMLElement>('[data-col][data-row]');
+    if (tileButton) {
+      this.pendingBoardTap = {
+        pointerId: event.pointerId ?? -1,
+        startX: event.clientX ?? 0,
+        startY: event.clientY ?? 0,
+        tileButton,
+      };
+      return;
+    }
+
     const handled = this.handleAction(target, true);
     if (handled) {
       event.preventDefault();
       this.suppressNextClick = true;
     }
+  };
+
+  private readonly handlePointerMove = (event: PointerEvent): void => {
+    if (!this.pendingBoardTap) {
+      return;
+    }
+
+    if ((event.pointerId ?? -1) !== this.pendingBoardTap.pointerId) {
+      return;
+    }
+
+    const distance = Math.hypot(
+      (event.clientX ?? 0) - this.pendingBoardTap.startX,
+      (event.clientY ?? 0) - this.pendingBoardTap.startY,
+    );
+
+    if (distance > TAP_MOVE_THRESHOLD_PX) {
+      this.pendingBoardTap = null;
+    }
+  };
+
+  private readonly handlePointerUp = (event: PointerEvent): void => {
+    if (!this.pendingBoardTap) {
+      return;
+    }
+
+    if ((event.pointerId ?? -1) !== this.pendingBoardTap.pointerId) {
+      return;
+    }
+
+    const tileButton = this.pendingBoardTap.tileButton;
+    this.pendingBoardTap = null;
+
+    const handled = this.handleAction(tileButton, true);
+    if (handled) {
+      event.preventDefault();
+      this.suppressNextClick = true;
+    }
+  };
+
+  private readonly handlePointerCancel = (): void => {
+    this.pendingBoardTap = null;
   };
 
   private readonly handleClick = (event: Event): void => {
@@ -274,7 +348,19 @@ export class GameApp {
       return true;
     }
 
-    const continuousToggle = target.closest<HTMLElement>('[data-toggle="continuous-mode"], .toggle-row');
+    const speedButton = target.closest<HTMLElement>('[data-speed]');
+    if (speedButton) {
+      this.gameSpeed = Number(speedButton.dataset.speed) as GameSpeed;
+      this.statusMessage =
+        this.gameSpeed === 0 ? 'Battle paused.' : `Battle speed set to ${this.gameSpeed}x.`;
+      this.lastFrameTime = 0;
+      this.syncView();
+      return true;
+    }
+
+    const continuousToggle = target.closest<HTMLElement>(
+      '[data-toggle="continuous-mode"], .toggle-row',
+    );
     if (continuousToggle && allowDirectToggle) {
       const enabled = !this.currentSnapshot?.continuousMode;
       this.engine.setContinuousMode(Boolean(enabled));
@@ -300,6 +386,7 @@ export class GameApp {
     const resetButton = target.closest<HTMLElement>('[data-action="reset-game"]');
     if (resetButton) {
       this.engine.reset();
+      this.gameSpeed = 1;
       this.lastFrameTime = 0;
       this.clearPlacementPreview();
       this.syncView();
@@ -312,6 +399,13 @@ export class GameApp {
       if (!result.ok && result.reason) {
         this.statusMessage = result.reason;
       }
+      this.syncView();
+      return true;
+    }
+
+    const targetButton = target.closest<HTMLElement>('[data-target-mode]');
+    if (targetButton) {
+      this.engine.setSelectedTowerTargetMode(targetButton.dataset.targetMode as TowerTargetMode);
       this.syncView();
       return true;
     }
@@ -354,7 +448,7 @@ export class GameApp {
     }
 
     return false;
-  };
+  }
 
   private readonly handleChange = (event: Event): void => {
     const target = event.target;
@@ -437,8 +531,12 @@ export class GameApp {
 
     const col = Number(tileButton.dataset.col);
     const row = Number(tileButton.dataset.row);
-    const tile = this.currentSnapshot.tiles.find((candidate) => candidate.col === col && candidate.row === row);
-    const occupied = this.currentSnapshot.towers.some((tower) => tower.col === col && tower.row === row);
+    const tile = this.currentSnapshot.tiles.find(
+      (candidate) => candidate.col === col && candidate.row === row,
+    );
+    const occupied = this.currentSnapshot.towers.some(
+      (tower) => tower.col === col && tower.row === row,
+    );
 
     if (!tile || tile.type !== 'grass' || occupied || this.currentSnapshot.isGameOver) {
       this.clearPlacementPreview();
@@ -523,7 +621,8 @@ export class GameApp {
           typeof tower.col === 'number' &&
           typeof tower.row === 'number' &&
           ((typeof tower.level === 'number' && tower.level >= 1) ||
-            (Array.isArray(tower.upgradeIds) && tower.upgradeIds.every((upgradeId) => typeof upgradeId === 'string'))),
+            (Array.isArray(tower.upgradeIds) &&
+              tower.upgradeIds.every((upgradeId) => typeof upgradeId === 'string'))),
       )
     );
   }
@@ -542,7 +641,17 @@ export class GameApp {
           this.audio.play('place');
           break;
         case 'tower-fired':
-          this.audio.play('shoot');
+          this.audio.playAttack(event.towerTypeId ?? 'archer');
+          break;
+        case 'tower-upgraded':
+          this.audio.play('upgrade');
+          break;
+        case 'enemy-defeated':
+          this.audio.play('defeat');
+          break;
+        case 'insufficient-gold':
+        case 'invalid-placement':
+          this.audio.play('deny');
           break;
         case 'wave-started':
           this.audio.play('wave');
@@ -576,6 +685,10 @@ export class GameApp {
         ? null
         : formatDecimal(Math.max(0.1, snapshot.autoStartInMs / 1000), 1);
     const bestTower = getBestTowerSummary(snapshot.towers);
+    const waveProgress =
+      snapshot.wavePreview.total === 0
+        ? 0
+        : snapshot.wavePreview.spawned / snapshot.wavePreview.total;
     const markup = `
       <main class="shell">
         <section class="hero">
@@ -615,6 +728,17 @@ export class GameApp {
                           : `Wave ${nextWaveLabel} is ready when you are.`
                 }
               </p>
+              <div class="wave-scout" aria-label="Wave composition">
+                <span>${snapshot.isWaveActive ? 'Wave progress' : `Wave ${nextWaveLabel} scout report`}</span>
+                <div class="wave-scout__counts">
+                  <strong>🐁 ${formatInteger(snapshot.wavePreview.mouse)}</strong>
+                  <strong>🐀 ${formatInteger(snapshot.wavePreview.rat)}</strong>
+                  ${snapshot.wavePreview.brute > 0 ? `<strong>👑 ${formatInteger(snapshot.wavePreview.brute)}</strong>` : ''}
+                </div>
+                <div class="wave-progress" aria-hidden="true">
+                  <i style="--wave-progress:${waveProgress}"></i>
+                </div>
+              </div>
             </div>
 
             <div class="hud">
@@ -633,7 +757,7 @@ export class GameApp {
             <div class="board-frame">
               <div class="board-stack">
                 <div
-                  class="board"
+                  class="board board--${snapshot.mapId}"
                   style="width:${boardWidth}px;height:${boardHeight}px;"
                 >
                 ${
@@ -654,6 +778,27 @@ export class GameApp {
                     : ''
                 }
 
+                ${
+                  selectedPlacedTower && selectedPlacedTowerConfig
+                    ? `
+                      <div
+                        class="range-preview range-preview--selected"
+                        style="
+                          left:${selectedPlacedTower.col * TILE_SIZE + TILE_SIZE / 2}px;
+                          top:${selectedPlacedTower.row * TILE_SIZE + TILE_SIZE / 2}px;
+                          width:${selectedPlacedTower.range * TILE_SIZE * 2}px;
+                          height:${selectedPlacedTower.range * TILE_SIZE * 2}px;
+                          --range-accent:${selectedPlacedTowerConfig.accent};
+                        "
+                        aria-hidden="true"
+                      ></div>
+                    `
+                    : ''
+                }
+
+                <span class="map-landmark map-landmark--burrow" aria-hidden="true"></span>
+                <span class="map-landmark map-landmark--gate" aria-hidden="true"></span>
+
                 ${snapshot.tiles
                   .map(
                     (tile) => `
@@ -673,10 +818,11 @@ export class GameApp {
                     const config = TOWER_TYPES[tower.typeId];
                     return `
                       <div
-                        class="tower"
+                        class="tower ${tower.id === snapshot.selectedPlacedTowerId ? 'is-selected' : ''} ${tower.level > 1 ? 'is-upgraded' : ''}"
                         style="left:${tower.col * TILE_SIZE}px;top:${tower.row * TILE_SIZE}px;--tower-accent:${config.accent};"
                       >
                         <img src="${spriteForTower(tower.typeId)}" alt="${config.name}" />
+                        ${tower.level > 1 ? `<span class="tower-level">${formatInteger(tower.level)}</span>` : ''}
                       </div>
                     `;
                   })
@@ -686,10 +832,10 @@ export class GameApp {
                   .map(
                     (enemy) => `
                       <div
-                        class="enemy"
+                        class="enemy ${enemy.isSlowed ? 'is-slowed' : ''} enemy--${enemy.typeId}"
                         style="left:${enemy.position.x - TILE_SIZE / 2}px;top:${enemy.position.y - TILE_SIZE / 2}px;--enemy-tint:${enemy.tint};"
                       >
-                        <img src="${spriteForEnemy(enemy.typeId)}" alt="${enemy.typeId}" />
+                        <img src="${spriteForEnemy(enemy.typeId)}" alt="${ENEMY_TYPES[enemy.typeId].name}" />
                         <div class="enemy-health">
                           <div style="width:${(enemy.hp / enemy.maxHp) * 100}%"></div>
                         </div>
@@ -711,15 +857,19 @@ export class GameApp {
                       ? projectile.to.x
                       : isChain
                         ? projectile.to.x
-                      : projectile.from.x + (projectile.to.x - projectile.from.x) * projectile.progress;
+                        : projectile.from.x +
+                          (projectile.to.x - projectile.from.x) * projectile.progress;
                     const y = isSlash
                       ? projectile.to.y
                       : isChain
                         ? projectile.to.y
-                      : projectile.from.y +
-                        (projectile.to.y - projectile.from.y) * projectile.progress -
-                        arcLift;
-                    const angle = Math.atan2(projectile.to.y - projectile.from.y, projectile.to.x - projectile.from.x);
+                        : projectile.from.y +
+                          (projectile.to.y - projectile.from.y) * projectile.progress -
+                          arcLift;
+                    const angle = Math.atan2(
+                      projectile.to.y - projectile.from.y,
+                      projectile.to.x - projectile.from.x,
+                    );
                     return `
                       ${isChain ? renderChainLinks(projectile) : ''}
                       <div
@@ -822,7 +972,7 @@ export class GameApp {
                 : ''
             }
 
-            <section class="panel">
+            <section class="panel panel--deploy">
               <div class="panel-header">
                 <h2>Deploy kittens</h2>
                 <button class="ghost-button" data-action="toggle-audio">
@@ -840,8 +990,15 @@ export class GameApp {
                       >
                         <img src="${spriteForTower(tower.id)}" alt="${tower.name}" />
                         <div>
-                          <strong>${tower.name}</strong>
-                          <span>${formatInteger(tower.cost)}g</span>
+                          <div class="tower-card__header">
+                            <strong>${tower.name}</strong>
+                            <span>${formatInteger(tower.cost)}g</span>
+                          </div>
+                          <div class="tower-card__tags">
+                            <span>${tower.role}</span>
+                            <span>${formatInteger(Math.round(tower.damage / (tower.fireRateMs / 1000)))} DPS</span>
+                            <span>Range ${formatDecimal(tower.range, 1)}</span>
+                          </div>
                           <p>${tower.description}</p>
                         </div>
                       </button>
@@ -851,7 +1008,7 @@ export class GameApp {
               </div>
             </section>
 
-            <section class="panel">
+            <section class="panel panel--upgrades">
               <div class="panel-header">
                 <h2>Upgrade cats</h2>
                 <span class="selection-note">${
@@ -885,6 +1042,22 @@ export class GameApp {
                         <span>Kills ${formatInteger(selectedPlacedTower.totalKills)}</span>
                         <span>Total damage ${formatInteger(selectedPlacedTower.totalDamage)}</span>
                         ${renderTowerSpecialStats(selectedPlacedTower)}
+                      </div>
+                      <div class="targeting-control">
+                        <span>Target</span>
+                        <div class="segmented-control">
+                          ${(['first', 'strong', 'close'] as TowerTargetMode[])
+                            .map(
+                              (mode) => `
+                                <button
+                                  data-target-mode="${mode}"
+                                  aria-pressed="${selectedPlacedTower.targetMode === mode}"
+                                  class="${selectedPlacedTower.targetMode === mode ? 'is-active' : ''}"
+                                >${mode[0].toUpperCase()}${mode.slice(1)}</button>
+                              `,
+                            )
+                            .join('')}
+                        </div>
                       </div>
                       ${
                         selectedPlacedTower.appliedUpgrades.length > 0
@@ -939,7 +1112,7 @@ export class GameApp {
                         data-action="remove-tower"
                         ${snapshot.isGameOver ? 'disabled' : ''}
                       >
-                        Remove cat
+                        Withdraw cat (no refund)
                       </button>
                     </div>
                   `
@@ -955,6 +1128,22 @@ export class GameApp {
               <div class="panel-header">
                 <h2>Run control</h2>
                 <span class="selection-note">${percentFormatter.format(snapshot.interestRate)} interest</span>
+              </div>
+              <div class="speed-control">
+                <span>Battle speed</span>
+                <div class="segmented-control">
+                  ${([0, 1, 2] as GameSpeed[])
+                    .map(
+                      (speed) => `
+                        <button
+                          data-speed="${speed}"
+                          aria-pressed="${this.gameSpeed === speed}"
+                          class="${this.gameSpeed === speed ? 'is-active' : ''}"
+                        >${speed === 0 ? 'Pause' : `${speed}×`}</button>
+                      `,
+                    )
+                    .join('')}
+                </div>
               </div>
               <label class="toggle-row" for="continuous-mode-toggle">
                 <div>

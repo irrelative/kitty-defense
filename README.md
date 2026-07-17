@@ -4,20 +4,23 @@ Browser tower defense with kittens as towers and rodents as enemies.
 
 ## Current State
 
-- Playable single-map defense loop with three tower types
-- Wave spawning with scaling enemy health and mixed enemy tiers
+- Three selectable maps with distinct routes and environmental themes
+- Six kitten classes with distinct roles, targeting priorities, and branching upgrades
+- Wave spawning with composition previews, progress tracking, and scaling enemy tiers
 - Gold, lives, kills, wave progression, and placement validation
-- Custom SVG visual assets for towers, enemies, and UI accents
-- Generated WAV audio cues for placement, attacks, wave starts, leaks, and game over
+- Custom silhouette-led SVG visual assets for towers, enemies, and UI accents
+- Class-specific generated audio cues plus a layered theme and combat feedback
+- Pause, 1×/2× speed controls, continuous mode, and automatic local saves
 - Responsive layout verified in desktop and mobile browser emulation
 
 ## How To Play
 
-1. Select a kitten tower from the right-side panel.
+1. Choose a route and select a kitten tower from the deployment panel.
 2. Click grass tiles to place towers.
 3. Avoid path tiles because rodents need a clear route.
 4. Start a wave and earn gold by defeating enemies.
 5. Keep rodents from reaching the village gate.
+6. Select a placed cat to upgrade it or change its targeting priority.
 
 ## Scripts
 
@@ -100,7 +103,7 @@ For the repository to serve successfully:
 
 ## Next Improvements
 
-- Tower upgrades and sell mechanics
-- Multiple maps and route variants
-- More enemy traits and late-wave balancing
-- Persistent save data and score tracking
+- Additional enemy traits and late-wave balancing
+- Optional sell refunds and placement undo
+- More map-specific ambient effects
+- Expanded accessibility and mobile-device playtesting

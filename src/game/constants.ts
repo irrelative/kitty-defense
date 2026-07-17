@@ -1,9 +1,4 @@
-import type {
-  EnemyConfig,
-  GameMapConfig,
-  TowerConfig,
-  TowerTypeId,
-} from '@/types/game';
+import type { EnemyConfig, GameMapConfig, TowerConfig, TowerTypeId } from '@/types/game';
 
 export const BOARD_COLS = 10;
 export const BOARD_ROWS = 7;
@@ -119,6 +114,7 @@ export const TOWER_TYPES: Record<TowerTypeId, TowerConfig> = {
     splashRadius: 0,
     accent: '#ffca7a',
     description: 'Balanced range and reliable bow shots.',
+    role: 'Reliable',
     spriteName: 'archer-cat',
     projectileVariant: 'orb',
     upgradeTree: [
@@ -200,6 +196,7 @@ export const TOWER_TYPES: Record<TowerTypeId, TowerConfig> = {
     splashRadius: 0,
     accent: '#ff8a80',
     description: 'Heavy swipes for rodents that get too close.',
+    role: 'Burst',
     spriteName: 'claw-cat',
     projectileVariant: 'slash',
     upgradeTree: [
@@ -281,6 +278,7 @@ export const TOWER_TYPES: Record<TowerTypeId, TowerConfig> = {
     splashRadius: 0,
     accent: '#8be7ff',
     description: 'Slower arcane bolts that land with heavier impact.',
+    role: 'Arcane',
     spriteName: 'magic-cat',
     projectileVariant: 'bolt',
     upgradeTree: [
@@ -362,6 +360,7 @@ export const TOWER_TYPES: Record<TowerTypeId, TowerConfig> = {
     splashRadius: 0,
     accent: '#97e8ff',
     description: 'Icy spells slow rodents down and can lock whole packs in place.',
+    role: 'Slow',
     spriteName: 'frost-cat',
     projectileVariant: 'frost',
     slowStrength: 0.45,
@@ -459,6 +458,7 @@ export const TOWER_TYPES: Record<TowerTypeId, TowerConfig> = {
     splashRadius: 0,
     accent: '#c7ddff',
     description: 'Forking lightning leaps across crowded packs of rodents.',
+    role: 'Chain',
     spriteName: 'storm-cat',
     projectileVariant: 'chain',
     slowStrength: 0,
@@ -556,6 +556,7 @@ export const TOWER_TYPES: Record<TowerTypeId, TowerConfig> = {
     splashRadius: 1.05,
     accent: '#ffd36e',
     description: 'Lobs explosive yarn bombs that punish clustered rodents.',
+    role: 'Splash',
     spriteName: 'bombardier-cat',
     projectileVariant: 'bomb',
     upgradeTree: [

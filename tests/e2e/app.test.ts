@@ -18,8 +18,13 @@ class MockAudio {
   }
 }
 
-const pointerDown = (element: HTMLElement | null): void => {
-  element?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+const pointerTap = (element: HTMLElement | null, x = 0, y = 0): void => {
+  if (!element) {
+    return;
+  }
+
+  element.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+  window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: x, clientY: y }));
 };
 
 describe('GameApp', () => {
@@ -172,10 +177,10 @@ describe('GameApp', () => {
     const app = new GameApp(root);
     app.mount();
 
-    pointerDown(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
-    pointerDown(root.querySelector<HTMLElement>('[data-action="start-wave"]'));
-    pointerDown(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
-    pointerDown(root.querySelector<HTMLElement>('[data-upgrade-id="archer-marksman"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-action="start-wave"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-upgrade-id="archer-marksman"]'));
 
     expect(root.textContent).toMatch(/Archer Cat learned Marksman\./i);
     expect(root.querySelector('.hud')?.textContent).toContain('Gold60');
@@ -194,10 +199,10 @@ describe('GameApp', () => {
     const app = new GameApp(root);
     app.mount();
 
-    pointerDown(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
-    pointerDown(root.querySelector<HTMLElement>('[data-action="start-wave"]'));
-    pointerDown(root.querySelector<HTMLElement>('[data-tower="claw"]'));
-    pointerDown(root.querySelector<HTMLElement>('[data-col="6"][data-row="4"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-action="start-wave"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-tower="claw"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-col="6"][data-row="4"]'));
 
     expect(root.textContent).toMatch(/Claw Cat deployed\./i);
     expect(root.querySelector('.hud')?.textContent).toContain('Gold25');
@@ -215,11 +220,13 @@ describe('GameApp', () => {
 
     root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]')?.click();
     root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]')?.click();
-    pointerDown(root.querySelector<HTMLElement>('[data-action="remove-tower"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-action="remove-tower"]'));
 
     expect(root.textContent).toMatch(/Archer Cat withdrawn\./i);
     expect(root.querySelectorAll('.tower')).toHaveLength(0);
-    expect(root.textContent).toMatch(/Click a placed cat on the board to inspect it and upgrade it during the run\./i);
+    expect(root.textContent).toMatch(
+      /Click a placed cat on the board to inspect it and upgrade it during the run\./i,
+    );
 
     app.unmount();
   });
@@ -231,10 +238,12 @@ describe('GameApp', () => {
     const app = new GameApp(root);
     app.mount();
 
-    pointerDown(root.querySelector<HTMLElement>('[data-toggle="continuous-mode"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-toggle="continuous-mode"]'));
 
     expect(root.textContent).toMatch(/Continuous mode enabled/i);
-    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(true);
+    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(
+      true,
+    );
 
     app.unmount();
   });
@@ -246,16 +255,20 @@ describe('GameApp', () => {
     const app = new GameApp(root);
     app.mount();
 
-    pointerDown(root.querySelector<HTMLElement>('[data-action="start-wave"]'));
-    pointerDown(root.querySelector<HTMLElement>('[data-toggle="continuous-mode"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-action="start-wave"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-toggle="continuous-mode"]'));
 
     expect(root.textContent).toMatch(/Continuous mode enabled/i);
-    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(true);
+    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(
+      true,
+    );
 
-    pointerDown(root.querySelector<HTMLElement>('[data-toggle="continuous-mode"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-toggle="continuous-mode"]'));
 
     expect(root.textContent).toMatch(/Continuous mode disabled/i);
-    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(false);
+    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(
+      false,
+    );
 
     app.unmount();
   });
@@ -296,8 +309,10 @@ describe('GameApp', () => {
     expect(root.querySelector('.hud')?.textContent).toContain('Score214');
     expect(root.querySelector('.hud')?.textContent).toContain('Gold92');
     expect(root.querySelector('.hud')?.textContent).toContain('Lives11');
-    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(true);
-    pointerDown(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
+    expect(root.querySelector<HTMLInputElement>('[data-toggle="continuous-mode"]')?.checked).toBe(
+      true,
+    );
+    pointerTap(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
     expect(root.textContent).toMatch(/Path: Volley/i);
     expect(root.textContent).not.toMatch(/Choose route/i);
 
@@ -349,6 +364,47 @@ describe('GameApp', () => {
     expect(root.textContent).toMatch(/Wave reached\s*7/i);
     expect(root.textContent).toMatch(/Best tower\s*Archer Cat/i);
     expect(root.textContent).toMatch(/75% of kills and 78% of damage/i);
+
+    app.unmount();
+  });
+
+  it('does not place a tower when a board drag exceeds the tap threshold', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+
+    const app = new GameApp(root);
+    app.mount();
+
+    const tile = root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]');
+    tile?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+    root.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 40, clientY: 12 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 40, clientY: 12 }));
+
+    expect(root.querySelectorAll('.tower')).toHaveLength(0);
+    expect(root.querySelector('.hud')?.textContent).toContain('Gold150');
+
+    app.unmount();
+  });
+
+  it('offers wave intel, speed controls, and tower targeting', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+
+    const app = new GameApp(root);
+    app.mount();
+
+    expect(root.textContent).toMatch(/scout report/i);
+    pointerTap(root.querySelector<HTMLElement>('[data-speed="2"]'));
+    expect(root.textContent).toMatch(/Battle speed set to 2x/i);
+    expect(root.querySelector('[data-speed="2"]')?.getAttribute('aria-pressed')).toBe('true');
+
+    pointerTap(root.querySelector<HTMLElement>('[data-col="0"][data-row="0"]'));
+    pointerTap(root.querySelector<HTMLElement>('[data-target-mode="strong"]'));
+
+    expect(root.textContent).toMatch(/targets strong rodents/i);
+    expect(root.querySelector('[data-target-mode="strong"]')?.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
 
     app.unmount();
   });

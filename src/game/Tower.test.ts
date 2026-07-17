@@ -124,4 +124,18 @@ describe('Tower', () => {
     expect(snapshot.totalDamage).toBe(50);
     expect(snapshot.totalKills).toBe(1);
   });
+
+  it('supports first, strong, and close targeting priorities', () => {
+    const path = createPathPoints(MAPS_BY_ID[DEFAULT_MAP_ID].path);
+    const strongTower = new Tower('archer', 1, 2);
+    const mouse = new Enemy('mouse', 1);
+    const brute = new Enemy('brute', 1);
+
+    strongTower.setTargetMode('strong');
+    strongTower.attack(1000, [mouse, brute], path);
+
+    expect(mouse.currentHp).toBe(mouse.maxHp);
+    expect(brute.currentHp).toBeLessThan(brute.maxHp);
+    expect(strongTower.toSnapshot().targetMode).toBe('strong');
+  });
 });

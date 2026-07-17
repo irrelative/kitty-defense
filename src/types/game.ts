@@ -2,6 +2,7 @@ export type TileType = 'grass' | 'path' | 'base';
 export type TowerTypeId = 'archer' | 'claw' | 'magic' | 'bombardier' | 'frost' | 'storm';
 export type EnemyArchetype = 'mouse' | 'rat' | 'brute';
 export type MapId = 'meadow-run' | 'creek-bend' | 'orchard-loop';
+export type TowerTargetMode = 'first' | 'strong' | 'close';
 export type GameEventType =
   | 'enemy-defeated'
   | 'enemy-leaked'
@@ -72,6 +73,7 @@ export interface TowerConfig {
   splashRadius: number;
   accent: string;
   description: string;
+  role: string;
   spriteName: string;
   projectileVariant: 'orb' | 'bolt' | 'bomb' | 'slash' | 'frost' | 'chain';
   slowStrength?: number;
@@ -144,6 +146,7 @@ export interface TowerSnapshot {
   canUpgrade: boolean;
   appliedUpgrades: TowerUpgradeNode[];
   availableUpgrades: TowerUpgradeNode[];
+  targetMode: TowerTargetMode;
 }
 
 export interface EnemySnapshot {
@@ -153,11 +156,21 @@ export interface EnemySnapshot {
   maxHp: number;
   position: Point;
   tint: string;
+  isSlowed: boolean;
 }
 
 export interface GameEvent {
   type: GameEventType;
   message: string;
+  towerTypeId?: TowerTypeId;
+}
+
+export interface WavePreview {
+  total: number;
+  mouse: number;
+  rat: number;
+  brute: number;
+  spawned: number;
 }
 
 export interface GameSnapshot {
@@ -177,6 +190,7 @@ export interface GameSnapshot {
   kills: number;
   score: number;
   wave: number;
+  wavePreview: WavePreview;
   continuousMode: boolean;
   autoStartInMs: number | null;
   selectedTower: TowerTypeId;
@@ -204,6 +218,7 @@ export interface SavedTowerState {
   upgradeIds?: string[];
   totalKills?: number;
   totalDamage?: number;
+  targetMode?: TowerTargetMode;
 }
 
 export interface GameSaveData {

@@ -68,6 +68,29 @@ describe('GameEngine', () => {
     });
   });
 
+  it('previews the next wave composition', () => {
+    const snapshot = new GameEngine().getSnapshot();
+
+    expect(snapshot.wavePreview.total).toBeGreaterThan(0);
+    expect(snapshot.wavePreview.mouse + snapshot.wavePreview.rat + snapshot.wavePreview.brute).toBe(
+      snapshot.wavePreview.total,
+    );
+    expect(snapshot.wavePreview.spawned).toBe(0);
+  });
+
+  it('persists tower targeting preferences', () => {
+    const engine = new GameEngine();
+
+    expect(engine.placeTower(1, 2, 'archer').ok).toBe(true);
+    const towerId = engine.getSnapshot().towers[0].id;
+    expect(engine.selectPlacedTower(towerId)).toBe(true);
+    expect(engine.setSelectedTowerTargetMode('strong')).toBe(true);
+
+    const restored = new GameEngine();
+    expect(restored.restoreFromSaveData(engine.exportSaveData())).toBe(true);
+    expect(restored.getSnapshot().towers[0].targetMode).toBe('strong');
+  });
+
   it('switches maps before the run starts', () => {
     const engine = new GameEngine();
 
@@ -77,9 +100,9 @@ describe('GameEngine', () => {
 
     expect(snapshot.mapId).toBe('creek-bend');
     expect(snapshot.mapName).toBe('Creek Bend');
-    expect(snapshot.tiles.some((tile) => tile.col === 0 && tile.row === 1 && tile.type === 'path')).toBe(
-      true,
-    );
+    expect(
+      snapshot.tiles.some((tile) => tile.col === 0 && tile.row === 1 && tile.type === 'path'),
+    ).toBe(true);
   });
 
   it('locks map switching after setup has started', () => {
@@ -114,7 +137,9 @@ describe('GameEngine', () => {
       damage: 25,
       range: 3,
     });
-    expect(upgradedTower?.appliedUpgrades.map((upgrade) => upgrade.id)).toEqual(['archer-marksman']);
+    expect(upgradedTower?.appliedUpgrades.map((upgrade) => upgrade.id)).toEqual([
+      'archer-marksman',
+    ]);
   });
 
   it('blocks upgrades before wave 1 starts', () => {
@@ -195,7 +220,9 @@ describe('GameEngine', () => {
       level: 2,
       damage: 25,
     });
-    expect(snapshot.towers[0].appliedUpgrades.map((upgrade) => upgrade.id)).toEqual(['archer-marksman']);
+    expect(snapshot.towers[0].appliedUpgrades.map((upgrade) => upgrade.id)).toEqual([
+      'archer-marksman',
+    ]);
     expect(snapshot.towers[0].totalKills).toBe(saveData.towers[0].totalKills);
     expect(snapshot.towers[0].totalDamage).toBe(saveData.towers[0].totalDamage);
   });

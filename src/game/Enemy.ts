@@ -33,7 +33,7 @@ export class Enemy {
     const hpScale = 1 + (waveNumber - 1) * 0.15 + Math.max(0, waveNumber - 6) * 0.025;
     const speedScale = 1 + (waveNumber - 1) * 0.035 + Math.max(0, waveNumber - 8) * 0.01;
 
-    this.id = `enemy-${enemyCounter += 1}`;
+    this.id = `enemy-${(enemyCounter += 1)}`;
     this.typeId = typeId;
     this.maxHp = Math.round(config.baseHp * hpScale);
     this.hp = this.maxHp;
@@ -49,6 +49,10 @@ export class Enemy {
 
   get isAlive(): boolean {
     return this.hp > 0;
+  }
+
+  get pathProgress(): number {
+    return this.segmentIndex + this.segmentProgress;
   }
 
   takeDamage(amount: number): boolean {
@@ -71,7 +75,7 @@ export class Enemy {
   advance(deltaMs: number, path: Point[]): boolean {
     const speedMultiplier =
       this.slowMsRemaining > 0 ? Math.max(0, 1 - Math.min(this.slowStrength, 1)) : 1;
-    let distanceRemaining = (this.speed * speedMultiplier * deltaMs) / 1000 * 72;
+    let distanceRemaining = ((this.speed * speedMultiplier * deltaMs) / 1000) * 72;
 
     while (distanceRemaining > 0 && this.segmentIndex < path.length - 1) {
       const start = path[this.segmentIndex];
@@ -122,6 +126,7 @@ export class Enemy {
       maxHp: this.maxHp,
       position: this.getPosition(path),
       tint: this.tint,
+      isSlowed: this.slowMsRemaining > 0,
     };
   }
 }

@@ -23,6 +23,7 @@ import type {
   MapId,
   PlacementResult,
   ProjectileVisual,
+  TowerTargetMode,
   TowerTypeId,
 } from '@/types/game';
 
@@ -150,12 +151,28 @@ export class GameEngine {
     return true;
   }
 
+  setSelectedTowerTargetMode(targetMode: TowerTargetMode): boolean {
+    const tower = this.towers.find((candidate) => candidate.id === this.selectedPlacedTowerId);
+    if (!tower) {
+      return false;
+    }
+
+    tower.setTargetMode(targetMode);
+    this.pendingEvents.push({
+      type: 'tower-selected',
+      message: `${TOWER_TYPES[tower.typeId].name} now targets ${targetMode} rodents.`,
+    });
+    return true;
+  }
+
   removeSelectedTower(): PlacementResult {
     if (this.isGameOver) {
       return this.rejectPlacement('The game is over.');
     }
 
-    const towerIndex = this.towers.findIndex((candidate) => candidate.id === this.selectedPlacedTowerId);
+    const towerIndex = this.towers.findIndex(
+      (candidate) => candidate.id === this.selectedPlacedTowerId,
+    );
     if (towerIndex === -1) {
       return this.rejectPlacement('Select a cat to remove.');
     }
@@ -223,7 +240,9 @@ export class GameEngine {
     }
 
     this.wave += 1;
-    this.activeBlueprint = this.waveManager.createBlueprint(this.wave);
+    if (this.activeBlueprint.number !== this.wave) {
+      this.activeBlueprint = this.waveManager.createBlueprint(this.wave);
+    }
     this.currentWaveElapsedMs = 0;
     this.currentBlueprintIndex = 0;
     this.isWaveActive = true;
@@ -316,6 +335,7 @@ export class GameEngine {
         this.pendingEvents.push({
           type: 'tower-fired',
           message: 'A kitten launched an attack.',
+          towerTypeId: tower.typeId,
         });
       }
     }
@@ -367,6 +387,7 @@ export class GameEngine {
       const clearBonus = WAVE_CLEAR_BONUS_BASE + this.wave * WAVE_CLEAR_BONUS_STEP;
       this.gold += interest + clearBonus;
       this.isWaveActive = false;
+      this.activeBlueprint = this.waveManager.createBlueprint(this.wave + 1);
       this.refreshContinuousStartCountdown();
       this.pendingEvents.push({
         type: 'wave-cleared',
@@ -378,6 +399,11 @@ export class GameEngine {
   getSnapshot(): GameSnapshot {
     const events = [...this.pendingEvents];
     this.pendingEvents = [];
+    const previewBlueprint = this.activeBlueprint;
+    const previewCounts = previewBlueprint.spawns.reduce(
+      (counts, spawn) => ({ ...counts, [spawn.archetype]: counts[spawn.archetype] + 1 }),
+      { mouse: 0, rat: 0, brute: 0 },
+    );
 
     return {
       boardCols: this.currentMap.cols,
@@ -396,6 +422,11 @@ export class GameEngine {
       kills: this.kills,
       score: this.score,
       wave: this.wave,
+      wavePreview: {
+        total: previewBlueprint.spawns.length,
+        ...previewCounts,
+        spawned: this.isWaveActive ? this.currentBlueprintIndex : 0,
+      },
       continuousMode: this.continuousMode,
       autoStartInMs: this.autoStartCountdownMs,
       selectedTower: this.selectedTower,
@@ -409,6 +440,7 @@ export class GameEngine {
         id: projectile.id,
         from: projectile.from,
         to: projectile.to,
+        jumps: projectile.jumps,
         progress: projectile.progress,
         color: projectile.color,
         variant: projectile.variant,
@@ -440,6 +472,7 @@ export class GameEngine {
           upgradeIds: tower.getAppliedUpgradeIds(),
           totalKills: snapshot.totalKills,
           totalDamage: snapshot.totalDamage,
+          targetMode: snapshot.targetMode,
         };
       }),
     };
@@ -463,6 +496,7 @@ export class GameEngine {
         tower.restoreLegacyLevel(savedTower.level);
       }
       tower.restoreCombatStats(savedTower.totalKills ?? 0, savedTower.totalDamage ?? 0);
+      tower.setTargetMode(savedTower.targetMode ?? 'first');
       return tower;
     });
     this.enemies = [];
@@ -513,7 +547,9 @@ export class GameEngine {
   }
 
   private canSelectMap(): boolean {
-    return this.wave === 0 && !this.isWaveActive && this.towers.length === 0 && this.enemies.length === 0;
+    return (
+      this.wave === 0 && !this.isWaveActive && this.towers.length === 0 && this.enemies.length === 0
+    );
   }
 
   private canUpgradeTowers(): boolean {
