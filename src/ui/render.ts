@@ -690,21 +690,25 @@ export class GameApp {
         ? 0
         : snapshot.wavePreview.spawned / snapshot.wavePreview.total;
     const markup = `
-      <main class="shell">
+      <main class="shell ${snapshot.isWaveActive ? 'is-battle-active' : 'is-planning'}">
         <section class="hero">
-          <div>
-            <p class="eyebrow">Kitty Defense</p>
-            <h1>Keep the rodents out.</h1>
-            <p class="hero-copy">
-              Choose a route, place kittens, and hold the lane.
-            </p>
+          <div class="brand-lockup">
+            <span class="brand-mark" aria-hidden="true">🐾</span>
+            <div>
+              <p class="eyebrow">Kitty Defense</p>
+              <h1>Keep the rodents out.</h1>
+              <p class="hero-copy">Build a whiskered defense. Hold the lane.</p>
+            </div>
           </div>
           <div class="hero-card">
             <div>
               <span>Current map</span>
               <strong>${snapshot.mapName}</strong>
             </div>
-            <p>${snapshot.isWaveActive ? 'Rodents on the move.' : snapshot.wave === 0 ? 'Choose your route, then place towers.' : 'The path is quiet for now.'}</p>
+            <div class="hero-card__status ${snapshot.isWaveActive ? 'is-live' : ''}">
+              <i aria-hidden="true"></i>
+              <p>${snapshot.isWaveActive ? 'Rodents on the move' : snapshot.wave === 0 ? 'Planning the defense' : 'The lane is quiet'}</p>
+            </div>
           </div>
         </section>
 
@@ -715,7 +719,7 @@ export class GameApp {
                 <span>Wave</span>
                 <strong>${currentWaveLabel}</strong>
               </div>
-              <p>
+              <p class="wave-banner__copy">
                 ${
                   snapshot.isGameOver
                     ? 'The village has fallen.'
@@ -746,12 +750,12 @@ export class GameApp {
                 <span>Next wave</span>
                 <strong>${snapshot.isGameOver ? '-' : nextWaveLabel}</strong>
               </div>
-              <div class="stat"><span>Score</span><strong>${formatInteger(snapshot.score)}</strong></div>
-              <div class="stat"><span>Gold</span><strong>${formatInteger(snapshot.gold)}</strong></div>
-              <div class="stat"><span>Interest</span><strong>+${formatInteger(snapshot.projectedInterest)}g</strong></div>
-              <div class="stat"><span>Lives</span><strong>${formatInteger(snapshot.lives)}</strong></div>
-              <div class="stat"><span>Kills</span><strong>${formatInteger(snapshot.kills)}</strong></div>
-              <div class="stat"><span>Status</span><strong>${snapshot.isGameOver ? 'Lost' : snapshot.isWaveActive ? 'Battle' : 'Planning'}</strong></div>
+              <div class="stat stat--score"><span>Score</span><strong>${formatInteger(snapshot.score)}</strong></div>
+              <div class="stat stat--gold"><span>Gold</span><strong>${formatInteger(snapshot.gold)}</strong></div>
+              <div class="stat stat--interest"><span>Interest</span><strong>+${formatInteger(snapshot.projectedInterest)}g</strong></div>
+              <div class="stat stat--lives"><span>Lives</span><strong>${formatInteger(snapshot.lives)}</strong></div>
+              <div class="stat stat--kills"><span>Kills</span><strong>${formatInteger(snapshot.kills)}</strong></div>
+              <div class="stat stat--status"><span>Status</span><strong>${snapshot.isGameOver ? 'Lost' : snapshot.isWaveActive ? 'Battle' : 'Planning'}</strong></div>
             </div>
 
             <div class="board-frame">
@@ -798,6 +802,10 @@ export class GameApp {
 
                 <span class="map-landmark map-landmark--burrow" aria-hidden="true"></span>
                 <span class="map-landmark map-landmark--gate" aria-hidden="true"></span>
+                <span class="scenery scenery--flowers" aria-hidden="true">✿</span>
+                <span class="scenery scenery--mushrooms" aria-hidden="true">♠</span>
+                <span class="scenery scenery--stone" aria-hidden="true"></span>
+                <span class="scenery scenery--grass" aria-hidden="true">〽</span>
 
                 ${snapshot.tiles
                   .map(
@@ -832,7 +840,7 @@ export class GameApp {
                   .map(
                     (enemy) => `
                       <div
-                        class="enemy ${enemy.isSlowed ? 'is-slowed' : ''} enemy--${enemy.typeId} enemy--facing-${enemy.facing}"
+                        class="enemy ${enemy.isSlowed ? 'is-slowed' : ''} ${enemy.hp < enemy.maxHp ? 'is-damaged' : ''} enemy--${enemy.typeId} enemy--facing-${enemy.facing}"
                         style="left:${enemy.position.x - TILE_SIZE / 2}px;top:${enemy.position.y - TILE_SIZE / 2}px;--enemy-tint:${enemy.tint};"
                       >
                         <img src="${spriteForEnemy(enemy.typeId)}" alt="${ENEMY_TYPES[enemy.typeId].name}" />
@@ -940,7 +948,7 @@ export class GameApp {
             ${
               snapshot.canSelectMap
                 ? `
-                  <section class="panel">
+                  <section class="panel panel--maps">
                     <div class="panel-header">
                       <h2>Choose route</h2>
                       <span class="selection-note">Startup only</span>
@@ -984,15 +992,18 @@ export class GameApp {
                   .map(
                     (tower) => `
                       <button
-                        class="tower-card ${snapshot.selectedTower === tower.id ? 'is-selected' : ''}"
+                        class="tower-card ${snapshot.selectedTower === tower.id ? 'is-selected' : ''} ${snapshot.gold < tower.cost ? 'is-unaffordable' : ''}"
+                        style="--tower-card-accent:${tower.accent};"
                         data-tower="${tower.id}"
                         aria-pressed="${snapshot.selectedTower === tower.id}"
                       >
-                        <img src="${spriteForTower(tower.id)}" alt="${tower.name}" />
+                        <span class="tower-card__portrait">
+                          <img src="${spriteForTower(tower.id)}" alt="${tower.name}" />
+                        </span>
                         <div>
                           <div class="tower-card__header">
                             <strong>${tower.name}</strong>
-                            <span>${formatInteger(tower.cost)}g</span>
+                            <span class="tower-card__cost">${formatInteger(tower.cost)}g</span>
                           </div>
                           <div class="tower-card__tags">
                             <span>${tower.role}</span>
@@ -1179,7 +1190,7 @@ export class GameApp {
                   Reset game
                 </button>
               </div>
-              <p class="status-copy">${this.statusMessage}</p>
+              <p class="status-copy" aria-live="polite"><span aria-hidden="true">●</span>${this.statusMessage}</p>
             </section>
           </aside>
         </section>
