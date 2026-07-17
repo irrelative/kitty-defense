@@ -143,46 +143,231 @@ writeWave('gameover.wav', 1.2, (time) => {
   return env * chord * 0.16;
 });
 
-const themeNotes = [
-  [440, 0.25],
-  [493.88, 0.25],
-  [587.33, 0.25],
-  [493.88, 0.25],
-  [440, 0.25],
-  [369.99, 0.25],
-  [329.63, 0.25],
-  [369.99, 0.25],
-  [392, 0.25],
-  [440, 0.25],
-  [493.88, 0.25],
-  [587.33, 0.25],
-  [440, 0.25],
-  [392, 0.25],
-  [329.63, 0.25],
-  [392, 0.25],
+const midiFrequency = (note) => 440 * 2 ** ((note - 69) / 12);
+const triangle = (phase) => (2 / Math.PI) * Math.asin(Math.sin(phase));
+const TEMPO = 128;
+const BEAT_SECONDS = 60 / TEMPO;
+const BAR_SECONDS = BEAT_SECONDS * 4;
+const THEME_BARS = 16;
+const THEME_DURATION = BAR_SECONDS * THEME_BARS;
+
+const chordProgression = [
+  [60, 64, 67],
+  [57, 60, 64],
+  [65, 69, 72],
+  [67, 71, 74],
+  [60, 64, 67],
+  [57, 60, 64],
+  [65, 69, 72],
+  [67, 71, 74],
+  [57, 60, 64],
+  [65, 69, 72],
+  [60, 64, 67],
+  [67, 71, 74],
+  [65, 69, 72],
+  [60, 64, 67],
+  [67, 71, 74],
+  [67, 71, 74],
 ];
 
-writeWave('theme.wav', 16, (time) => {
-  const phraseTime = time % 4;
-  let cursor = 0;
-  let noteFrequency = 293.66;
-  let noteDuration = 0.5;
+const leadNotes = [
+  72,
+  76,
+  79,
+  76,
+  74,
+  72,
+  69,
+  null,
+  72,
+  74,
+  76,
+  79,
+  81,
+  79,
+  76,
+  null,
+  77,
+  76,
+  74,
+  72,
+  69,
+  72,
+  74,
+  null,
+  71,
+  74,
+  79,
+  77,
+  76,
+  74,
+  72,
+  null,
+  72,
+  76,
+  79,
+  83,
+  81,
+  79,
+  76,
+  74,
+  72,
+  74,
+  76,
+  79,
+  84,
+  83,
+  79,
+  null,
+  77,
+  81,
+  84,
+  81,
+  79,
+  77,
+  76,
+  74,
+  71,
+  74,
+  77,
+  79,
+  83,
+  81,
+  79,
+  null,
+  81,
+  84,
+  88,
+  84,
+  83,
+  81,
+  79,
+  76,
+  77,
+  81,
+  84,
+  86,
+  84,
+  81,
+  79,
+  null,
+  79,
+  83,
+  86,
+  83,
+  81,
+  79,
+  76,
+  74,
+  74,
+  77,
+  79,
+  83,
+  81,
+  79,
+  77,
+  null,
+  77,
+  76,
+  74,
+  72,
+  69,
+  72,
+  74,
+  76,
+  79,
+  76,
+  72,
+  74,
+  76,
+  79,
+  81,
+  null,
+  83,
+  81,
+  79,
+  77,
+  76,
+  74,
+  72,
+  71,
+  74,
+  77,
+  79,
+  76,
+  74,
+  71,
+  67,
+  null,
+];
 
-  for (const [frequency, duration] of themeNotes) {
-    if (phraseTime >= cursor && phraseTime < cursor + duration) {
-      noteFrequency = frequency;
-      noteDuration = duration;
-      break;
-    }
-    cursor += duration;
-  }
+writeWave('theme.wav', THEME_DURATION, (time) => {
+  const barIndex = Math.min(THEME_BARS - 1, Math.floor(time / BAR_SECONDS));
+  const barTime = time % BAR_SECONDS;
+  const beatIndex = Math.floor(barTime / BEAT_SECONDS);
+  const beatTime = barTime % BEAT_SECONDS;
+  const eighthSeconds = BEAT_SECONDS / 2;
+  const eighthIndex = Math.floor(time / eighthSeconds);
+  const eighthTime = time % eighthSeconds;
+  const sixteenthSeconds = BEAT_SECONDS / 4;
+  const sixteenthIndex = Math.floor(barTime / sixteenthSeconds);
+  const sixteenthTime = barTime % sixteenthSeconds;
+  const chord = chordProgression[barIndex];
 
-  const localTime = phraseTime - cursor;
-  const env = envelope(localTime, 0.02, Math.min(0.16, noteDuration / 2), noteDuration);
-  const lead = Math.sin(localTime * 2 * Math.PI * noteFrequency);
-  const pad = Math.sin(localTime * 2 * Math.PI * noteFrequency * 0.5);
-  const bassFrequency = [110, 92.5, 98, 82.41][Math.floor(time / 4)];
-  const bass = Math.sin(time * 2 * Math.PI * bassFrequency) * 0.055;
-  const pulse = time % 0.5 < 0.04 ? noise(Math.floor(time * SAMPLE_RATE)) * 0.025 : 0;
-  return env * (lead * 0.13 + pad * 0.075) + bass + pulse;
+  const leadNote = leadNotes[eighthIndex];
+  const leadFrequency = leadNote === null ? 0 : midiFrequency(leadNote);
+  const leadEnvelope =
+    leadNote === null ? 0 : envelope(eighthTime, 0.012, eighthSeconds * 0.42, eighthSeconds);
+  const leadPhase = eighthTime * 2 * Math.PI * leadFrequency;
+  const lead =
+    leadEnvelope *
+    (triangle(leadPhase) * 0.105 + Math.sin(leadPhase * 2) * 0.025) *
+    (barIndex >= 8 ? 1.08 : 0.92);
+
+  const padEnvelope = envelope(barTime, 0.16, 0.28, BAR_SECONDS);
+  const pad =
+    chord.reduce((sum, note, index) => {
+      const frequency = midiFrequency(note - 12);
+      const drift = 1 + Math.sin(time * 0.7 + index * 1.8) * 0.0025;
+      return sum + Math.sin(time * 2 * Math.PI * frequency * drift);
+    }, 0) *
+    padEnvelope *
+    0.028;
+
+  const arpNote = chord[sixteenthIndex % chord.length] + 12 + (sixteenthIndex % 6 >= 3 ? 12 : 0);
+  const arpFrequency = midiFrequency(arpNote);
+  const arpEnvelope = envelope(sixteenthTime, 0.006, sixteenthSeconds * 0.66, sixteenthSeconds);
+  const arp =
+    triangle(sixteenthTime * 2 * Math.PI * arpFrequency) *
+    arpEnvelope *
+    (barIndex < 4 ? 0.018 : 0.035);
+
+  const bassNote = beatIndex === 2 ? chord[2] - 24 : chord[0] - 24;
+  const bassFrequency = midiFrequency(bassNote);
+  const bassEnvelope = envelope(beatTime, 0.008, BEAT_SECONDS * 0.52, BEAT_SECONDS);
+  const bassPhase = beatTime * 2 * Math.PI * bassFrequency;
+  const bass = (Math.sin(bassPhase) * 0.072 + triangle(bassPhase) * 0.025) * bassEnvelope;
+
+  const kickTime = beatTime;
+  const kick =
+    Math.sin(kickTime * 2 * Math.PI * (118 - kickTime * 145)) *
+    Math.exp(-kickTime * 17) *
+    (barIndex < 4 ? 0.04 : 0.105);
+  const snare =
+    (beatIndex === 1 || beatIndex === 3) && beatTime < 0.14
+      ? noise(Math.floor(time * SAMPLE_RATE)) * Math.exp(-beatTime * 30) * 0.075
+      : 0;
+  const hat =
+    eighthTime < 0.045
+      ? noise(Math.floor(time * SAMPLE_RATE * 1.7)) * Math.exp(-eighthTime * 75) * 0.025
+      : 0;
+  const fill =
+    (barIndex === 7 || barIndex === 15) && sixteenthIndex >= 12
+      ? Math.sin(sixteenthTime * 2 * Math.PI * (150 + sixteenthIndex * 12)) *
+        Math.exp(-sixteenthTime * 22) *
+        0.055
+      : 0;
+
+  const sectionLift = barIndex >= 8 && barIndex < 12 ? 1.06 : 1;
+  return (lead + pad + arp + bass + kick + snare + hat + fill) * sectionLift;
 });

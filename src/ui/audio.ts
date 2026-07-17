@@ -39,7 +39,7 @@ export class AudioManager {
 
     this.theme = new Audio(assetUrl('audio/theme.wav'));
     this.theme.loop = true;
-    this.theme.volume = 0.22;
+    this.theme.volume = 0.26;
 
     (Object.keys(AUDIO_FILES) as SoundName[]).forEach((name) => {
       this.pools.set(name, new Audio(AUDIO_FILES[name]));
