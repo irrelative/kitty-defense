@@ -832,7 +832,7 @@ export class GameApp {
                   .map(
                     (enemy) => `
                       <div
-                        class="enemy ${enemy.isSlowed ? 'is-slowed' : ''} enemy--${enemy.typeId}"
+                        class="enemy ${enemy.isSlowed ? 'is-slowed' : ''} enemy--${enemy.typeId} enemy--facing-${enemy.facing}"
                         style="left:${enemy.position.x - TILE_SIZE / 2}px;top:${enemy.position.y - TILE_SIZE / 2}px;--enemy-tint:${enemy.tint};"
                       >
                         <img src="${spriteForEnemy(enemy.typeId)}" alt="${ENEMY_TYPES[enemy.typeId].name}" />

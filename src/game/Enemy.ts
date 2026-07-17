@@ -28,6 +28,8 @@ export class Enemy {
 
   private slowMsRemaining = 0;
 
+  private facing: EnemySnapshot['facing'] = 'right';
+
   constructor(typeId: EnemyArchetype, waveNumber: number) {
     const config = ENEMY_TYPES[typeId];
     const hpScale = 1 + (waveNumber - 1) * 0.15 + Math.max(0, waveNumber - 6) * 0.025;
@@ -80,6 +82,11 @@ export class Enemy {
     while (distanceRemaining > 0 && this.segmentIndex < path.length - 1) {
       const start = path[this.segmentIndex];
       const end = path[this.segmentIndex + 1];
+      if (end.x > start.x) {
+        this.facing = 'right';
+      } else if (end.x < start.x) {
+        this.facing = 'left';
+      }
       const segmentLength = Math.hypot(end.x - start.x, end.y - start.y);
       const traversed = this.segmentProgress * segmentLength;
       const leftOnSegment = segmentLength - traversed;
@@ -127,6 +134,7 @@ export class Enemy {
       position: this.getPosition(path),
       tint: this.tint,
       isSlowed: this.slowMsRemaining > 0,
+      facing: this.facing,
     };
   }
 }

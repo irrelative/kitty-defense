@@ -157,6 +157,7 @@ export interface EnemySnapshot {
   position: Point;
   tint: string;
   isSlowed: boolean;
+  facing: 'left' | 'right';
 }
 
 export interface GameEvent {

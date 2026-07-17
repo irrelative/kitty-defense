@@ -563,6 +563,10 @@ button {
   background: color-mix(in srgb, var(--enemy-tint), transparent 76%);
 }
 
+.enemy--facing-right img {
+  transform: scaleX(-1);
+}
+
 .enemy.is-slowed img {
   filter: saturate(0.72) hue-rotate(142deg) drop-shadow(0 0 8px #d9fbff);
 }
